@@ -9,7 +9,7 @@
   "registries": {
     "packagist": {
       "kind": "packagist",
-      "username": "simtabi",
+      "username": "your-packagist-handle",
       "credential_ref": "PACKAGIST_API_TOKEN"
     }
   },

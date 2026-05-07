@@ -28,7 +28,7 @@ Existing multi-repo tools (`mr`, `mu-repo`, `gita`) stop at clone / pull / statu
 - **Three platforms from day one**: GitHub, GitLab (cloud or self-hosted), Bitbucket Cloud.
 - **Two transports**: SSH (with optional explicit private-key path, `IdentitiesOnly=yes` to block agent enumeration) or HTTPS-with-API-token (via `GIT_ASKPASS`, never via URL embed, never in argv).
 - **Multi-org / multi-account**: any number of accounts in one config; each repo binds to one account. A leak in one account's credentials can't touch another's repos.
-- **Eight first-class operations**: `status`, `sync`, `audit`, `cleanup`, `release`, `verify`, `mirror`, `init`.
+- **Thirteen first-class verbs**: `status`, `sync`, `inventory`, `audit`, `cleanup`, `verify`, `release`, `mirror`, `init`, `config`, `setup`, `doctor`, `identity` — fleet operations plus first-run wizards and per-account git-identity management.
 - **Dry-run on everything**: `--dry-run` is honoured by every mutating operation.
 - **Zero runtime dependencies**: stdlib only. `keyring` is an optional extra for OS-keychain-backed secrets.
 - **Docker-native**: slim image (~80 MB), runs as non-root, mounts your `~/.config/gendia` and SSH keys; `docker compose run gendia sync` is the deployable unit.
@@ -57,13 +57,13 @@ Two files, both JSON. The machine-wide one declares accounts and registries; the
 ```json
 {
   "accounts": {
-    "myorg":     { "platform": "github",    "org": "myorg",        "credential_ref": "GITHUB_TOKEN_MYORG" },
-    "personal":   { "platform": "github",    "username": "imanim",   "credential_ref": "GITHUB_TOKEN_PERSONAL" },
-    "internal":   { "platform": "gitlab",    "host": "gitlab.simtabi.com", "group": "tools", "credential_ref": "GITLAB_TOKEN_INTERNAL" },
-    "simtabi-bb": { "platform": "bitbucket", "workspace": "simtabi", "credential_ref": "BITBUCKET_APP_PASSWORD" }
+    "myorg":     { "platform": "github",    "org": "myorg",                  "credential_ref": "GITHUB_TOKEN_MYORG" },
+    "personal":  { "platform": "github",    "username": "yourhandle",         "credential_ref": "GITHUB_TOKEN_PERSONAL" },
+    "internal":  { "platform": "gitlab",    "host": "gitlab.example.com",     "group": "tools", "credential_ref": "GITLAB_TOKEN_INTERNAL" },
+    "client-x":  { "platform": "bitbucket", "workspace": "client-x-workspace","credential_ref": "BITBUCKET_APP_PASSWORD_CLIENT_X" }
   },
   "registries": {
-    "packagist": { "kind": "packagist", "username": "simtabi", "credential_ref": "PACKAGIST_API_TOKEN" },
+    "packagist": { "kind": "packagist", "username": "your-packagist-handle", "credential_ref": "PACKAGIST_API_TOKEN" },
     "npm":        { "kind": "npm",       "credential_ref": "NPM_TOKEN" },
     "pypi":       { "kind": "pypi",      "credential_ref": "PYPI_API_TOKEN" }
   },
@@ -151,14 +151,22 @@ For a VPS deployment, the typical pattern is `git_auth: "auto"` with an explicit
 ## Commands
 
 ```bash
+# Fleet operations (read your project + iterate every repo):
 gendia status                                  # one-line summary per repo
 gendia sync                                    # push pending commits + tags + notify webhook registry
+gendia inventory                               # categorise every package per account (synced / pending / untracked / missing / ignored)
 gendia release <repo> <version>                # bump CHANGELOG, tag, push, notify
 gendia audit                                   # hygiene checks
 gendia cleanup                                 # rm cleanup_globs across all repos
 gendia mirror --to ~/repos                     # clone every repo defined in config
 gendia verify                                  # run each repo's verify[] commands
+
+# Workstation setup (manage gendia's own config + the host's git identity):
 gendia init [--out FILE] [--force]             # scaffold a fresh gendia.json
+gendia setup [local|vps|project|docker|k8s|ci] # interactive first-run wizard, autodetects shape
+gendia config {list|get|set|unset|edit|path|doctor}   # manage the .env that holds tokens + paths
+gendia doctor                                  # full preflight: env file, git/ssh binaries, agent, credentials
+gendia identity {list|check|apply|setup|init}  # per-account git user.name / user.email / signing key
 
 # Modifiers (work with most commands):
 --dry-run                  show what would happen, do nothing
@@ -240,11 +248,12 @@ gendia/
 │   ├── git/          GitRepo wrapper, safe subprocess shell, transport-auth env
 │   ├── providers/    GitProvider abstract base + GitHub / GitLab / Bitbucket
 │   ├── registries/   PackageRegistry hierarchy (Webhook / Publish capable)
-│   ├── operations/   Operation abstract base + 8 concrete verbs
+│   ├── operations/   Operation abstract base + 9 concrete fleet verbs
+│   ├── state/        sync-state store (~/.cache/gendia/sync-state.json)
 │   ├── observability logger.py (human + JSON formatters)
-│   └── cli/          argparse setup + dispatcher
-├── tests/unit/       schema, loader, auth, git_repo, git_auth, concurrency
-├── examples/         myorg.json, multi-org.json, .env.example
+│   └── cli/          argparse setup + dispatcher + sidecar commands (config/setup/doctor/identity)
+├── tests/unit/       schema, loader, auth, git_repo, git_auth, concurrency, identity, sync state
+├── examples/         single-org.json, multi-org.json, .env.example
 ├── bin/gendia        bash shim for development use
 ├── Dockerfile        multi-stage, ~80 MB
 ├── docker-compose.yml

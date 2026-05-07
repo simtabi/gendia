@@ -1,4 +1,4 @@
-.PHONY: help install install-dev test lint typecheck status sync release audit cleanup verify mirror init docker-build docker-shell docker-push clean
+.PHONY: help install install-dev test lint typecheck status sync inventory release audit cleanup verify mirror init docker-build docker-shell docker-push clean
 
 PYTHON ?= python3
 UV     ?= uv
@@ -38,12 +38,12 @@ status:              ## gendia status [ARGS=...]
 sync:                ## gendia sync [ARGS=...]
 	gendia sync $(ARGS)
 
-release:             ## REPO=ichava/core VERSION=1.0.1 make release
+release:             ## REPO=myorg/core VERSION=1.0.1 make release
 	@test -n "$(REPO)"    || (echo "REPO=... required";    exit 1)
 	@test -n "$(VERSION)" || (echo "VERSION=... required"; exit 1)
 	gendia release $(REPO) $(VERSION)
 
-audit cleanup verify mirror init: ## gendia <target> [ARGS=...]
+inventory audit cleanup verify mirror init: ## gendia <target> [ARGS=...]
 	gendia $@ $(ARGS)
 
 # --- Docker -------------------------------------------------------------------
