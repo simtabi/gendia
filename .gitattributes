@@ -1,0 +1,18 @@
+* text=auto eol=lf
+*.py text diff=python
+*.sh text eol=lf
+*.md text diff=markdown
+Dockerfile text
+Makefile text
+
+# export-ignore: don't ship in source dist tarballs
+/.editorconfig          export-ignore
+/.gitattributes         export-ignore
+/.gitignore             export-ignore
+/.github                export-ignore
+/CONTRIBUTING.md        export-ignore
+/tests                  export-ignore
+/docs                   export-ignore
+/examples               export-ignore
+/Dockerfile             export-ignore
+/docker-compose.yml     export-ignore

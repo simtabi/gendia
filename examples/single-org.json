@@ -1,0 +1,60 @@
+{
+  "accounts": {
+    "myorg": {
+      "platform": "github",
+      "org": "myorg",
+      "credential_ref": "GITHUB_TOKEN_MYORG"
+    }
+  },
+  "registries": {
+    "packagist": {
+      "kind": "packagist",
+      "username": "simtabi",
+      "credential_ref": "PACKAGIST_API_TOKEN"
+    }
+  },
+  "defaults": {
+    "concurrency": 4,
+    "log_format": "human"
+  },
+  "project": {
+    "name": "myorg",
+    "account": "myorg",
+    "registry": "packagist",
+    "root": "${MYORG_ROOT}",
+    "repos": [
+      {
+        "dir": "core",
+        "package": "myorg/core",
+        "verify": ["composer validate --no-check-publish", "vendor/bin/pest"],
+        "cleanup_globs": ["vendor", "node_modules", ".phpunit.cache", ".DS_Store"]
+      },
+      {
+        "dir": "browser",
+        "package": "myorg/browser",
+        "verify": ["composer validate --no-check-publish", "vendor/bin/pest"]
+      },
+      {
+        "dir": "documentation",
+        "package": null,
+        "verify": []
+      },
+      {
+        "dir": "tabler-icons",
+        "package": "myorg/tabler-icons",
+        "verify": ["composer validate --no-check-publish", "vendor/bin/pest"]
+      },
+      {
+        "dir": "bundled-icons",
+        "package": "myorg/bundled-icons",
+        "verify": ["composer validate --no-check-publish", "vendor/bin/pest"]
+      },
+      {
+        "dir": "metronic-icons",
+        "package": "myorg/metronic-icons",
+        "verify": ["composer validate --no-check-publish", "vendor/bin/pest"]
+      }
+    ],
+    "cleanup_globs": ["vendor", "node_modules", ".phpunit.cache", ".DS_Store"]
+  }
+}

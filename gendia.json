@@ -1,0 +1,43 @@
+{
+  "accounts": {
+    "simtabi": {
+      "platform": "github",
+      "org": "simtabi",
+      "credential_ref": "GITHUB_TOKEN_SIMTABI",
+      "git_auth": "auto"
+    }
+  },
+  "registries": {
+    "pypi": {
+      "kind": "pypi",
+      "credential_ref": "PYPI_API_TOKEN"
+    }
+  },
+  "project": {
+    "name": "gendia",
+    "account": "simtabi",
+    "registry": "pypi",
+    "root": ".",
+    "repos": [
+      {
+        "dir": ".",
+        "package": "simtabi/gendia",
+        "verify": [
+          "python -m ruff check src tests",
+          "python -m mypy src",
+          "python -m pytest -q tests/unit"
+        ],
+        "cleanup_globs": [
+          "build",
+          "dist",
+          "*.egg-info",
+          ".pytest_cache",
+          ".mypy_cache",
+          ".ruff_cache",
+          ".coverage",
+          "htmlcov"
+        ]
+      }
+    ]
+  }
+}

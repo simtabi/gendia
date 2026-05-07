@@ -1,0 +1,39 @@
+# Compose stanza for gendia.
+#
+# The image's ENTRYPOINT is `gendia-env gendia`, so:
+#   - The mounted .env is sourced automatically.
+#   - <KEY>_FILE entries are resolved before gendia starts.
+#   - You can use ${VAR} interpolation in the CMD or override files
+#     because docker compose reads the same env file via `env_file`.
+#
+# Usage:
+#   docker compose run --rm gendia status
+#   docker compose run --rm gendia sync
+#   docker compose run --rm gendia release myorg/package-a 1.0.1
+#
+# All four invocations pull from ~/.config/gendia/.env on the host.
+
+services:
+  gendia:
+    build: .
+    image: gendia:latest
+
+    # Read by Compose itself for ${VAR} interpolation in this file. The same
+    # file is bind-mounted at /config/.env so the container's gendia-env
+    # helper sees identical values.
+    env_file:
+      - ${HOME}/.config/gendia/.env
+
+    # Optional: override gendia config-tier defaults via the host shell.
+    environment:
+      GENDIA_LOG_FORMAT: ${GENDIA_LOG_FORMAT:-human}
+      GENDIA_LOG_LEVEL:  ${GENDIA_LOG_LEVEL:-INFO}
+
+    volumes:
+      - ${HOME}/.config/gendia:/config:ro
+      - ${HOME}/.ssh:/home/gendia/.ssh:ro
+      - ${PWD}:/work
+
+    # Default command; override at the CLI:
+    #   docker compose run --rm gendia <verb> [args...]
+    command: ["status"]

@@ -1,0 +1,183 @@
+#!/usr/bin/env bash
+#
+# bin/gendia-env — env-loader bridge between gendia's `.env` file and any
+# downstream tool (docker, docker compose, make, just, gendia itself).
+#
+# Solves three problems at once:
+#
+#   1. gendia's `.env` lives at ~/.config/gendia/.env, but `docker compose`
+#      auto-reads only the `.env` next to compose.yml. This script makes
+#      gendia's `.env` available to compose for ${VAR} interpolation.
+#
+#   2. The `<KEY>_FILE` Docker-secrets convention: when KEY_FILE points at
+#      a file, the file's contents become the value of KEY. We resolve
+#      these here so downstream tools see plain KEY=VALUE pairs.
+#
+#   3. Provides a uniform way to launch any process with gendia's env
+#      already loaded, regardless of how the host shell is configured.
+#
+# Usage:
+#     gendia-env <command> [args...]    # exec the command with env loaded
+#     gendia-env --print                # print KEY=VALUE pairs to stdout
+#     gendia-env --export               # print `export KEY="VALUE"` lines
+#     gendia-env --docker-args          # print `--env-file=PATH` for docker
+#     gendia-env --check                # print which keys are set, no values
+#     gendia-env --help
+#
+# Examples:
+#     # Run docker compose with gendia env interpolated:
+#     gendia-env docker compose up
+#
+#     # One-shot docker run:
+#     gendia-env docker run --rm gendia:latest sync
+#
+#     # Source into the current shell (note the leading `eval`):
+#     eval "$(gendia-env --export)"
+#
+#     # In a Makefile target:
+#     publish:
+#         @gendia-env docker compose run --rm gendia release ichava/core 1.0.1
+#
+# Override which env file is loaded:
+#     GENDIA_ENV_FILE=/path/to/other.env gendia-env <command>
+
+set -euo pipefail
+
+# `--help` short-circuits before any file I/O so it works on a fresh box.
+case "${1:-}" in
+    --help|-h)
+        sed -n '2,46p' "$0" | sed 's/^# \{0,1\}//'
+        exit 0
+        ;;
+esac
+
+ENV_FILE="${GENDIA_ENV_FILE:-${HOME}/.config/gendia/.env}"
+
+# -----------------------------------------------------------------------------
+# Pre-flight
+#
+# Whether a missing env file is fatal depends on the mode:
+#   --print / --export / --check / --docker-args  -> required (their job is
+#       to read the file).
+#   exec mode (default)                            -> optional; we warn
+#       and let the downstream command run with whatever's already in env.
+#       This is the right behaviour in containers where the env file may
+#       not be mounted at build/intro time.
+# -----------------------------------------------------------------------------
+case "${1:-}" in
+    --print|--export|--check|--docker-args)  REQUIRES_ENV_FILE=1 ;;
+    *)                                        REQUIRES_ENV_FILE=0 ;;
+esac
+
+if [ ! -f "$ENV_FILE" ]; then
+    if [ "$REQUIRES_ENV_FILE" = 1 ]; then
+        {
+            echo "gendia-env: no env file at $ENV_FILE"
+            echo "  fix: cp examples/.env.example ~/.config/gendia/.env && chmod 600 \$_"
+            echo "  or set GENDIA_ENV_FILE to point at a different location."
+        } >&2
+        exit 1
+    else
+        # Exec mode without env file: pass through silently. The downstream
+        # command may not need credentials (e.g. `gendia --help`).
+        exec "$@"
+    fi
+fi
+
+# Refuse-with-warning on world-readable .env (it has secrets in it).
+mode_octal=$(stat -f '%Lp' "$ENV_FILE" 2>/dev/null || stat -c '%a' "$ENV_FILE" 2>/dev/null || echo "")
+case "$mode_octal" in
+    600|400|640|440|"") ;;  # acceptable or unverifiable
+    *) echo "gendia-env: WARN: $ENV_FILE has loose permissions ($mode_octal); recommend chmod 600" >&2 ;;
+esac
+
+# -----------------------------------------------------------------------------
+# Parse the file to extract the set of keys it defines. We deliberately
+# rely on a strict regex (export-or-bare assignment, no quotes-on-LHS) so
+# the key list is exact, then source the file with the shell to evaluate
+# value-side quoting / escaping correctly.
+# -----------------------------------------------------------------------------
+GENDIA_ENV_KEYS=$(grep -E '^\s*(export\s+)?[A-Za-z_][A-Za-z0-9_]*=' "$ENV_FILE" \
+    | sed -E 's/^\s*(export\s+)?([A-Za-z_][A-Za-z0-9_]*)=.*/\2/' \
+    | sort -u)
+
+# -----------------------------------------------------------------------------
+# Source the env file. `set -a` auto-exports every assignment; `set +a`
+# undoes. Comments and blank lines are handled by the shell parser.
+# -----------------------------------------------------------------------------
+set -a
+# shellcheck disable=SC1090
+. "$ENV_FILE"
+set +a
+
+# -----------------------------------------------------------------------------
+# Resolve <KEY>_FILE -> KEY by reading the referenced file. This is the
+# standard Docker / Compose / Kubernetes secrets convention. The *_FILE
+# form wins when both are set: that lets local dev keep dev defaults
+# inline and per-deployment overrides come through file mounts.
+# -----------------------------------------------------------------------------
+for key in $GENDIA_ENV_KEYS; do
+    case "$key" in
+        *_FILE)
+            base="${key%_FILE}"
+            path="${!key:-}"
+            if [ -n "$path" ] && [ -f "$path" ]; then
+                content=$(cat "$path")
+                export "$base=$content"
+                # Track the resolved key so it shows up in --print/--export.
+                GENDIA_ENV_KEYS=$(printf '%s\n%s' "$GENDIA_ENV_KEYS" "$base" | sort -u)
+            fi
+            ;;
+    esac
+done
+
+# -----------------------------------------------------------------------------
+# Dispatch
+# -----------------------------------------------------------------------------
+print_kv() {
+    local key
+    for key in $GENDIA_ENV_KEYS; do
+        if [ -n "${!key+set}" ]; then
+            printf '%s=%s\n' "$key" "${!key}"
+        fi
+    done
+}
+
+print_export() {
+    local key
+    for key in $GENDIA_ENV_KEYS; do
+        if [ -n "${!key+set}" ]; then
+            # printf %q produces a shell-safe quoting that round-trips through eval.
+            printf 'export %s=%q\n' "$key" "${!key}"
+        fi
+    done
+}
+
+print_check() {
+    local key
+    for key in $GENDIA_ENV_KEYS; do
+        if [ -n "${!key+set}" ]; then
+            local val="${!key}"
+            local masked
+            if [ "${#val}" -gt 8 ]; then
+                masked="${val:0:4}...${val: -2} (len=${#val})"
+            else
+                masked="<set, len=${#val}>"
+            fi
+            printf '%-40s %s\n' "$key" "$masked"
+        else
+            printf '%-40s %s\n' "$key" "<unset>"
+        fi
+    done
+}
+
+case "${1:-}" in
+    "")             # no args: show help (already handled above for --help)
+                    sed -n '2,46p' "$0" | sed 's/^# \{0,1\}//'
+                    ;;
+    --print)        print_kv ;;
+    --export)       print_export ;;
+    --check)        print_check ;;
+    --docker-args)  printf '%s\n' "--env-file=$ENV_FILE" ;;
+    *)              exec "$@" ;;
+esac

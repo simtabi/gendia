@@ -1,0 +1,76 @@
+{
+  "_comment": [
+    "Multi-account example: personal GitHub + work GitHub org + self-hosted GitLab + Bitbucket.",
+    "Demonstrates per-account git_identity isolation so commits never bleed between accounts,",
+    "and three sync_policy modes (explicit / patterns / all) per account.",
+    "Replace every placeholder with your own values; this file ships generic on purpose."
+  ],
+
+  "accounts": {
+    "personal": {
+      "platform": "github",
+      "username": "yourhandle",
+      "credential_ref": "GITHUB_TOKEN_PERSONAL",
+      "git_auth": "auto",
+      "git_identity": {
+        "name": "Your Name",
+        "email": "<numeric-id>+yourhandle@users.noreply.github.com",
+        "ssh_alias": "github-personal"
+      },
+      "sync_policy": { "mode": "explicit" }
+    },
+
+    "work": {
+      "platform": "github",
+      "org": "acme-corp",
+      "credential_ref": "GITHUB_TOKEN_ACME",
+      "git_auth": "ssh",
+      "ssh_key_path": "~/.ssh/id_ed25519_work",
+      "git_identity": {
+        "name": "Your Name",
+        "email": "your.name@acme-corp.com",
+        "ssh_alias": "github-work",
+        "signing_key": "~/.ssh/id_ed25519_work.pub",
+        "sign_commits": true
+      },
+      "sync_policy": {
+        "mode": "patterns",
+        "include": ["package-*", "service-*"],
+        "exclude": ["sandbox-*", "archived-*"],
+        "include_archived": false,
+        "include_forks": false,
+        "include_private": true
+      }
+    },
+
+    "internal": {
+      "platform": "gitlab",
+      "host": "gitlab.acme-corp.internal",
+      "group": "platform",
+      "credential_ref": "GITLAB_TOKEN_INTERNAL",
+      "git_auth": "https",
+      "sync_policy": { "mode": "all", "exclude": ["legacy-*"] }
+    },
+
+    "client-x": {
+      "platform": "bitbucket",
+      "workspace": "client-x-workspace",
+      "credential_ref": "BITBUCKET_APP_PASSWORD_CLIENT_X",
+      "git_identity": {
+        "name": "Your Name (Client X)",
+        "email": "consultant@client-x.example"
+      }
+    }
+  },
+
+  "registries": {
+    "packagist": { "kind": "packagist", "username": "yourhandle", "credential_ref": "PACKAGIST_API_TOKEN" },
+    "npm":        { "kind": "npm",       "credential_ref": "NPM_TOKEN" },
+    "pypi":       { "kind": "pypi",      "credential_ref": "PYPI_API_TOKEN" }
+  },
+
+  "defaults": {
+    "concurrency": 4,
+    "log_format": "human"
+  }
+}

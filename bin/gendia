@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+#
+# bin/gendia — bash entry point for development use.
+#
+# When gendia is installed as a package (uv/pip), this shim is unnecessary;
+# the `gendia` executable lives on PATH automatically. This file exists so
+# that during development you can run `./bin/gendia <command>` without
+# installing the wheel — the shim resolves the project's src/ tree and
+# invokes Python with it on PYTHONPATH.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+PYTHONPATH="${PROJECT_DIR}/src${PYTHONPATH:+:${PYTHONPATH}}"
+
+# Pick the first usable Python on PATH. Allow override via GENDIA_PYTHON.
+if [[ -n "${GENDIA_PYTHON:-}" ]]; then
+    PY="${GENDIA_PYTHON}"
+else
+    for candidate in python3.13 python3.12 python3; do
+        if command -v "${candidate}" >/dev/null 2>&1; then
+            PY="${candidate}"
+            break
+        fi
+    done
+fi
+
+if [[ -z "${PY:-}" ]]; then
+    echo "gendia: no Python interpreter found (need 3.12+)" >&2
+    exit 127
+fi
+
+# Refuse to run on Python <3.12 — `typing.Self` and other features need it.
+"${PY}" -c '
+import sys
+if sys.version_info < (3, 12):
+    sys.exit(f"gendia: requires Python 3.12+, found {sys.version.split()[0]}")
+'
+
+export PYTHONPATH
+exec "${PY}" -m gendia "$@"
