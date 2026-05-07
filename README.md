@@ -190,7 +190,7 @@ make typecheck         # mypy
 make sync              # gendia sync (extra args via ARGS=...)
 make release REPO=core VERSION=1.0.1
 make audit / cleanup / verify / mirror / init / status
-make docker-build / docker-shell / docker-push REGISTRY=ghcr.io/simtabi
+make docker-build / docker-shell / docker-push REGISTRY=ghcr.io/your-org
 ```
 
 ## Docker / VPS

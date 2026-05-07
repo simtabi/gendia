@@ -359,7 +359,8 @@ def _setup_k8s() -> int:
     print("          restartPolicy: OnFailure")
     print("          containers:")
     print("          - name: gendia")
-    print("            image: ghcr.io/simtabi/gendia:latest")
+    print("            # Replace with the registry path you push gendia to:")
+    print("            image: ghcr.io/your-org/gendia:latest")
     print('            args: ["sync", "--log-format", "json"]')
     print("            env:")
     for k in keys:

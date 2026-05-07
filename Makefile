@@ -68,7 +68,7 @@ docker-run:          ## VERB=sync make docker-run — run any gendia verb in con
 		-v "$(PWD):/work" \
 		gendia:latest $(VERB) $(ARGS)
 
-docker-push:         ## REGISTRY=ghcr.io/simtabi make docker-push
+docker-push:         ## REGISTRY=ghcr.io/your-org make docker-push
 	@test -n "$(REGISTRY)" || (echo "REGISTRY=... required"; exit 1)
 	docker tag gendia:latest $(REGISTRY)/gendia:latest
 	docker push $(REGISTRY)/gendia:latest

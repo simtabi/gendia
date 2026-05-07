@@ -80,7 +80,7 @@ def test_github_to_repo_info_falls_back_to_https_when_no_ssh_url() -> None:
 
 @pytest.fixture
 def gitlab_group_provider() -> GitLabProvider:
-    account = Account(name="x", platform="gitlab", credential_ref="X", group="simtabi")
+    account = Account(name="x", platform="gitlab", credential_ref="X", group="acme")
     return GitLabProvider(account=account, token=None)
 
 
@@ -97,8 +97,8 @@ def gitlab_self_hosted_provider() -> GitLabProvider:
 
 
 def test_gitlab_default_host(gitlab_group_provider: GitLabProvider) -> None:
-    assert gitlab_group_provider.clone_url("simtabi/lib") == "git@gitlab.com:simtabi/lib.git"
-    assert gitlab_group_provider.web_url("simtabi/lib") == "https://gitlab.com/simtabi/lib"
+    assert gitlab_group_provider.clone_url("acme/lib") == "git@gitlab.com:acme/lib.git"
+    assert gitlab_group_provider.web_url("acme/lib") == "https://gitlab.com/acme/lib"
 
 
 def test_gitlab_self_hosted_host(gitlab_self_hosted_provider: GitLabProvider) -> None:
@@ -131,14 +131,14 @@ def bitbucket_provider() -> BitbucketProvider:
         name="x",
         platform="bitbucket",
         credential_ref="X",
-        workspace="simtabi",
+        workspace="acme",
     )
     return BitbucketProvider(account=account, token=None)
 
 
 def test_bitbucket_urls(bitbucket_provider: BitbucketProvider) -> None:
-    assert bitbucket_provider.clone_url("simtabi/lib") == "git@bitbucket.org:simtabi/lib.git"
-    assert bitbucket_provider.web_url("simtabi/lib") == "https://bitbucket.org/simtabi/lib"
+    assert bitbucket_provider.clone_url("acme/lib") == "git@bitbucket.org:acme/lib.git"
+    assert bitbucket_provider.web_url("acme/lib") == "https://bitbucket.org/acme/lib"
 
 
 def test_bitbucket_basic_auth_header_when_colon_present() -> None:
@@ -146,7 +146,7 @@ def test_bitbucket_basic_auth_header_when_colon_present() -> None:
         name="x",
         platform="bitbucket",
         credential_ref="X",
-        workspace="simtabi",
+        workspace="acme",
     )
     p = BitbucketProvider(account=account, token="alice:apppass123")
     header = p._auth_header()
@@ -158,7 +158,7 @@ def test_bitbucket_bearer_auth_header_when_no_colon() -> None:
         name="x",
         platform="bitbucket",
         credential_ref="X",
-        workspace="simtabi",
+        workspace="acme",
     )
     p = BitbucketProvider(account=account, token="bbtok_xxxxxxxxxxxx")
     assert p._auth_header() == "Bearer bbtok_xxxxxxxxxxxx"
