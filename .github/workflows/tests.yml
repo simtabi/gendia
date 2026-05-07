@@ -65,6 +65,10 @@ jobs:
       - name: gendia --version
         run: gendia --version
       - name: gendia setup --detect (clean host returns 1)
+        # Run from /tmp so the repo's dogfood gendia.json isn't picked up
+        # as ambient project config — we want to exercise the *clean host*
+        # code path, not validate the dogfood project's credentials.
+        working-directory: /tmp
         run: |
           set +e
           gendia setup --detect
@@ -73,6 +77,10 @@ jobs:
               echo "expected exit 1 (no setup), got $rc"; exit 1
           fi
       - name: gendia doctor (warns no env file)
+        # Same isolation: doctor from a directory with no project config
+        # surfaces warnings only (no env file, no accounts/registries),
+        # which is the contract this smoke test pins.
+        working-directory: /tmp
         run: |
           set +e
           gendia doctor
