@@ -4,7 +4,12 @@
       "platform": "github",
       "org": "simtabi",
       "credential_ref": "GITHUB_TOKEN_SIMTABI",
-      "git_auth": "auto"
+      "git_auth": "auto",
+      "git_identity": {
+        "name": "Simtabi LLC",
+        "email": "ops@simtabi.com",
+        "ssh_alias": "github-simtabi"
+      }
     }
   },
   "registries": {

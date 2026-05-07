@@ -23,7 +23,7 @@ All notable changes to `gendia` follow [Keep a Changelog](https://keepachangelog
 - Bash entry-point shim (`bin/gendia`) for development use without installing the wheel.
 - Makefile with help-driven targets covering install, test, lint, typecheck, every operation, and Docker.
 - Multi-stage Dockerfile (~80 MB final), runs as a non-root `gendia` user, suitable for VPS cron deployment.
-- 98 unit tests covering schema invariants, config loading + precedence, credential resolution including Docker-secrets convention, the `GitRepo` wrapper against a real tmp repo, the SSH/HTTPS auth-environment builder, sync-policy matching, sync-state persistence, and `GitIdentity` round-tripping.
+- 107 unit tests covering schema invariants, config loading + precedence, credential resolution including Docker-secrets convention, the `GitRepo` wrapper against a real tmp repo, the SSH/HTTPS auth-environment builder, sync-policy matching, sync-state persistence, `GitIdentity` round-tripping, and the `gendia identity init` wizard across global / project / includeIf scopes.
 - Generic example configs (`single-org.json`, `multi-org.json`, `.env.example`) — placeholder vendor / host names only, no project-specific identifiers.
 
 ### Requirements
