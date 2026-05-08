@@ -28,7 +28,7 @@ Existing multi-repo tools (`mr`, `mu-repo`, `gita`) stop at clone / pull / statu
 - **Three platforms from day one**: GitHub, GitLab (cloud or self-hosted), Bitbucket Cloud.
 - **Two transports**: SSH (with optional explicit private-key path, `IdentitiesOnly=yes` to block agent enumeration) or HTTPS-with-API-token (via `GIT_ASKPASS`, never via URL embed, never in argv).
 - **Multi-org / multi-account**: any number of accounts in one config; each repo binds to one account. A leak in one account's credentials can't touch another's repos.
-- **Thirteen first-class verbs**: `status`, `sync`, `inventory`, `audit`, `cleanup`, `verify`, `release`, `mirror`, `init`, `config`, `setup`, `doctor`, `identity` — fleet operations plus first-run wizards and per-account git-identity management.
+- **Fourteen first-class verbs**: `status`, `sync`, `inventory`, `audit`, `cleanup`, `verify`, `release`, `mirror`, `init`, `config`, `setup`, `doctor`, `identity`, `conventions` — fleet operations, first-run wizards, per-account git-identity management, and JSON-driven repo-hygiene linting.
 - **Dry-run on everything**: `--dry-run` is honoured by every mutating operation.
 - **Zero runtime dependencies**: stdlib only. `keyring` is an optional extra for OS-keychain-backed secrets.
 - **Docker-native**: slim image (~80 MB), runs as non-root, mounts your `~/.config/gendia` and SSH keys; `docker compose run gendia sync` is the deployable unit.
@@ -168,6 +168,12 @@ gendia config {list|get|set|unset|edit|path|doctor}   # manage the .env that hol
 gendia doctor                                  # full preflight: env file, git/ssh binaries, agent, credentials
 gendia identity {list|check|apply|setup|init}  # per-account git user.name / user.email / signing key
 
+# Quality control:
+gendia conventions [PATH] [--rules FILE] [--strict] [--json]
+                                               # lint repo hygiene: GitHub-special files, naming,
+                                               # ban-list glyphs, spec filenames, sub-folder readmes,
+                                               # shell-script shebangs (JSON-driven, fully tunable)
+
 # Modifiers (work with most commands):
 --dry-run                  show what would happen, do nothing
 --only repo-a,repo-b       operate on a subset
@@ -177,6 +183,58 @@ gendia identity {list|check|apply|setup|init}  # per-account git user.name / use
 --no-keyring               skip the OS keyring backend; env / .env only
 --config PATH              point at a specific gendia.json
 ```
+
+## Quality control: `gendia conventions`
+
+Most polyrepo ecosystems develop a "house style": which files must exist at the root, how markdown is named, which glyphs and emojis are off-limits, where specs live, what the readme has to declare. `gendia conventions` lints these the same way `audit` lints git hygiene — one tool, one config, identical on dev and CI.
+
+```bash
+# Single-repo run
+gendia conventions /path/to/repo
+
+# Walk every repo declared in the project's gendia.json
+cd ~/projects/myorg && gendia conventions
+
+# Custom rules (anything you omit falls back to the built-in defaults)
+gendia conventions --rules examples/conventions.json
+
+# CI mode: JSON output, warnings count as failures
+gendia conventions --json --strict
+```
+
+The default rules cover ten categories:
+
+| Rule | Severity | What it catches |
+|---|---|---|
+| `github-special` | error / ok | Missing `LICENSE`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`. Reports `CODEOWNERS`, `SECURITY.md`, `SUPPORT.md` when present. |
+| `md-kebab-case` | error | Markdown filenames that aren't lowercase-kebab-case (with sensible exemptions for `README.md`, `CHANGELOG.md`, etc.). |
+| `forbidden-chars` | warn | Em-dash `—` (U+2014) and any other glyph you ban via `forbidden_chars`. |
+| `readme-frontmatter` | warn | Optional: require `**Owner:**` and `**Last Updated:**` in the readme head. |
+| `decorator-emojis` | warn | Ornamental emojis (⭐ 🎯 💼 ✨ 🚀 etc.). Status emojis (✅ ⏳ 📋 ⛔ 🔴 🟠 🟡 🟢) are deliberately allowed. |
+| `spec-date-prefix` | error | Date-prefixed spec filenames like `2026-05-08-thing.md` (the date belongs in frontmatter). |
+| `spec-number-prefix` | error | Number-prefixed spec filenames like `001-thing.md` (sequential IDs go in the readme index). |
+| `subfolder-readme` | warn | Sub-folder `readme.md` files (one tier index per repo). |
+| `stale-link-pattern` | warn | Markdown links that target the patterns above (numbered specs, sub-folder readmes). |
+| `sh-shebang` | error / warn | `*.sh` files without a shebang (error) or without the executable bit (warn). |
+
+Optional rules off by default:
+- `forbid_trailing_whitespace_md` — flags trailing whitespace in markdown.
+
+Override anything via JSON. Every key is optional; omit it to keep the default. Full schema lives in `examples/conventions.json`:
+
+```json
+{
+  "github_special_required": ["LICENSE", "CONTRIBUTING.md"],
+  "forbidden_chars": ["—", "“", "”"],
+  "decorator_emojis_exempt": ["CLAUDE.md", "changelog.md", "ADR-*.md"],
+  "spec_dir": "docs/specs",
+  "require_readme_frontmatter": true,
+  "forbid_trailing_whitespace_md": true,
+  "exclude_dirs": [".git", "node_modules", "vendor", "build", "dist", ".venv"]
+}
+```
+
+Exit codes match `gendia doctor`: `0` = ok, `1` = warnings only (with `--strict`), `2` = at least one error.
 
 ## Make targets
 
@@ -189,7 +247,7 @@ make lint              # ruff
 make typecheck         # mypy
 make sync              # gendia sync (extra args via ARGS=...)
 make release REPO=core VERSION=1.0.1
-make audit / cleanup / verify / mirror / init / status
+make audit / cleanup / verify / mirror / init / status / inventory
 make docker-build / docker-shell / docker-push REGISTRY=ghcr.io/your-org
 ```
 
@@ -248,12 +306,12 @@ gendia/
 │   ├── git/          GitRepo wrapper, safe subprocess shell, transport-auth env
 │   ├── providers/    GitProvider abstract base + GitHub / GitLab / Bitbucket
 │   ├── registries/   PackageRegistry hierarchy (Webhook / Publish capable)
-│   ├── operations/   Operation abstract base + 9 concrete fleet verbs
+│   ├── operations/   Operation abstract base + 9 fleet verbs + conventions linter
 │   ├── state/        sync-state store (~/.cache/gendia/sync-state.json)
 │   ├── observability logger.py (human + JSON formatters)
 │   └── cli/          argparse setup + dispatcher + sidecar commands (config/setup/doctor/identity)
-├── tests/unit/       schema, loader, auth, git_repo, git_auth, concurrency, identity, sync state
-├── examples/         single-org.json, multi-org.json, .env.example
+├── tests/unit/       schema, loader, auth, git_repo, git_auth, concurrency, identity, sync state, conventions
+├── examples/         single-org.json, multi-org.json, conventions.json, .env.example
 ├── bin/gendia        bash shim for development use
 ├── Dockerfile        multi-stage, ~80 MB
 ├── docker-compose.yml

@@ -50,6 +50,7 @@ from gendia.operations import (
     SyncOperation,
     VerifyOperation,
 )
+from gendia.operations import conventions as conventions_op
 from gendia.providers import build_provider
 from gendia.registries import build_registry
 from gendia.util.paths import env_file_path
@@ -141,6 +142,9 @@ def build_parser() -> argparse.ArgumentParser:
     # identity {list, check, apply, setup}
     identity_cmd.add_subparser(sub)
 
+    # conventions [PATH] [--rules FILE] [--strict] [--json]
+    conventions_op.add_subparser(sub)
+
     return parser
 
 
@@ -181,6 +185,10 @@ _DESCRIPTIONS = {
     "release": "Tag, push, notify the registry. Requires <repo> and <version>.",
     "mirror": "Clone every repo defined in the project to a target directory.",
     "init": "Scaffold a fresh gendia.json in the current directory.",
+    "conventions": (
+        "Lint repo hygiene: GitHub-special files, naming, ban-list glyphs, "
+        "spec filename rules, sub-folder readmes, shell-script shebangs."
+    ),
 }
 
 
@@ -214,6 +222,8 @@ def dispatch(args: argparse.Namespace) -> int:  # noqa: PLR0911 — many sidecar
         return doctor_cmd.dispatch(args)
     if args.command == "identity":
         return identity_cmd.dispatch(args)
+    if args.command == "conventions":
+        return conventions_op.dispatch(args)
 
     try:
         config = load_config(project_path=args.config)

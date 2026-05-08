@@ -1,0 +1,42 @@
+{
+  "_comment": [
+    "Sample rules file for `gendia conventions --rules examples/conventions.json`.",
+    "Every key is optional — anything you omit falls back to the built-in default.",
+    "See src/gendia/operations/conventions.py for the full list of fields and defaults."
+  ],
+
+  "github_special_required": ["LICENSE", "CONTRIBUTING.md", "CODE_OF_CONDUCT.md"],
+  "github_special_optional": ["CODEOWNERS", "SECURITY.md", "SUPPORT.md"],
+
+  "enforce_md_kebab_case": true,
+  "md_kebab_exempt_names": [
+    "LICENSE", "CONTRIBUTING.md", "CODE_OF_CONDUCT.md",
+    "CODEOWNERS", "SECURITY.md", "SUPPORT.md",
+    "CHANGELOG.md", "CLAUDE.md", "README.md",
+    "ISSUE_TEMPLATE", "PULL_REQUEST_TEMPLATE.md"
+  ],
+
+  "forbidden_chars": ["—"],
+  "forbidden_chars_exempt": ["CLAUDE.md", "changelog.md", "CHANGELOG.md"],
+
+  "require_readme_frontmatter": false,
+  "readme_frontmatter_keys": ["Owner", "Last Updated"],
+
+  "decorator_emojis": ["⭐", "🎯", "💼", "👔", "📢", "✨", "🚀", "🤖", "🎨"],
+  "decorator_emojis_exempt": ["CLAUDE.md", "changelog.md", "CHANGELOG.md"],
+
+  "spec_dir": "specs",
+  "forbid_date_prefixed_specs": true,
+  "forbid_number_prefixed_specs": true,
+
+  "forbid_subfolder_readmes": true,
+  "forbid_stale_link_patterns": true,
+
+  "require_shebang_for_sh": true,
+  "forbid_trailing_whitespace_md": false,
+
+  "exclude_dirs": [
+    ".git", ".github", ".claude", ".venv", "venv",
+    "node_modules", "vendor", "__pycache__", "dist", "build"
+  ]
+}
