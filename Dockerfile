@@ -25,9 +25,11 @@ RUN apt-get update \
 COPY --from=builder /src/dist/*.whl /tmp/
 RUN pip install --no-cache-dir /tmp/*.whl && rm -rf /tmp/*.whl
 
-# Ship the env-loader bridge inside the image for Docker / Compose / k8s use.
-COPY bin/gendia-env /usr/local/bin/gendia-env
-RUN chmod +x /usr/local/bin/gendia-env
+# Ship the env-loader bridge + interactive menu inside the image so
+# `make docker-exec` can drop a user into a working toolkit shell.
+COPY bin/gendia-env  /usr/local/bin/gendia-env
+COPY bin/gendia-menu /usr/local/bin/gendia-menu
+RUN chmod +x /usr/local/bin/gendia-env /usr/local/bin/gendia-menu
 
 # XDG-compliant config location; mount your config volume here.
 ENV XDG_CONFIG_HOME=/config \

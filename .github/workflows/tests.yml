@@ -88,3 +88,39 @@ jobs:
           if [ "$rc" != "1" ]; then
               echo "expected exit 1 (warnings), got $rc"; exit 1
           fi
+
+      - name: standards engine — list profiles
+        # Should print the 16 bundled rule packs from bundled JSON resources.
+        # Regresses if `pyproject.toml`'s force-include for `data/standards/`
+        # is removed, or if `_BUNDLED_PROFILES` falls out of sync.
+        working-directory: /tmp
+        run: |
+          count=$(gendia conventions --list-profiles | grep -cE '^  [a-z]')
+          if [ "$count" -lt 16 ]; then
+              echo "expected at least 16 bundled profiles, got $count"; exit 1
+          fi
+
+      - name: standards engine — list scaffolds
+        # Should print the 13 bundled scaffolds from bundled JSON resources.
+        working-directory: /tmp
+        run: |
+          count=$(gendia init --list-scaffolds | grep -cE '^  [a-z]')
+          if [ "$count" -lt 13 ]; then
+              echo "expected at least 13 bundled scaffolds, got $count"; exit 1
+          fi
+
+      - name: standards engine — --fix --dry-run on a fresh empty dir
+        # Regression guard for `--fix` + `--dry-run` argparse wiring and the
+        # bundled fix kinds. Expects at least one `would-fix` line for an
+        # empty repo (R001 README is missing, etc.).
+        run: |
+          rm -rf /tmp/fix-smoke && mkdir /tmp/fix-smoke
+          gendia conventions /tmp/fix-smoke --no-legacy --profile core --fix --dry-run \
+              | grep -q 'would-fix' \
+              || (echo "expected '--fix --dry-run' to print 'would-fix' lines"; exit 1)
+
+      - name: bin/gendia-menu --list parses cleanly
+        # Bash-syntax + resolution smoke for the interactive menu.
+        run: |
+          bash -n bin/gendia-menu
+          bin/gendia-menu --list | grep -q '\[INSPECT\]'
