@@ -196,6 +196,43 @@ class SyncPolicy:
 
 
 @dataclass(frozen=True, slots=True)
+class ManualRepo:
+    """A repo the provider's API can't (or shouldn't) discover.
+
+    Use this for private / archived / unsupported-platform repositories you
+    still want gendia to know about. The `host` is an SSH alias or hostname;
+    `org` is the platform-side scope (org / group / workspace); `repos` is
+    the list of repo *names* under that org.
+
+    Example (in gendia.json):
+
+        "manual_repos": [
+            {"host": "github-personal", "org": "myhandle", "repos": ["dotfiles", "scratch"]}
+        ]
+    """
+
+    host: str
+    org: str
+    repos: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        if not self.host:
+            raise ConfigError("manual_repos: host is required")
+        if not self.org:
+            raise ConfigError("manual_repos: org is required")
+        if not self.repos:
+            raise ConfigError(f"manual_repos {self.host}/{self.org}: repos[] cannot be empty")
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> Self:
+        return cls(
+            host=str(payload.get("host", "")),
+            org=str(payload.get("org", "")),
+            repos=tuple(payload.get("repos") or ()),
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class Account:
     """A credential-bearing identity on one of the supported VCS platforms.
 
@@ -232,8 +269,11 @@ class Account:
     git_auth: str = "ssh"
     sync_policy: SyncPolicy = field(default_factory=SyncPolicy)
     git_identity: GitIdentity = field(default_factory=GitIdentity)
+    manual_repos: tuple[ManualRepo, ...] = field(default_factory=tuple)
 
-    _ALLOWED_PLATFORMS = frozenset({"github", "gitlab", "bitbucket"})
+    _ALLOWED_PLATFORMS = frozenset(
+        {"github", "gitlab", "bitbucket", "bitbucket-server", "gitea", "azure"}
+    )
     _ALLOWED_GIT_AUTH = frozenset({"ssh", "https", "auto"})
 
     def __post_init__(self) -> None:
@@ -261,6 +301,8 @@ class Account:
 
     @classmethod
     def from_dict(cls, name: str, payload: dict[str, Any]) -> Self:
+        manual_raw = payload.get("manual_repos") or ()
+        manual = tuple(ManualRepo.from_dict(item) for item in manual_raw if isinstance(item, dict))
         return cls(
             name=name,
             platform=str(payload.get("platform", "")).lower(),
@@ -275,6 +317,7 @@ class Account:
             git_auth=str(payload.get("git_auth", "ssh")).lower(),
             sync_policy=SyncPolicy.from_dict(payload.get("sync_policy")),
             git_identity=GitIdentity.from_dict(payload.get("git_identity")),
+            manual_repos=manual,
         )
 
 
@@ -409,6 +452,7 @@ class GendiaConfig:
     registries: dict[str, Registry]
     project: Project | None
     defaults: Defaults
+    forges_file: str | None = None
 
     def account(self, name: str) -> Account:
         if name not in self.accounts:

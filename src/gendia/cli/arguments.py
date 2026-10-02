@@ -39,6 +39,8 @@ from gendia.observability.logger import get_logger
 from gendia.operations import (
     AuditOperation,
     CleanupOperation,
+    ConvertOperation,
+    GenerateOperation,
     InitOperation,
     InventoryOperation,
     MirrorOperation,
@@ -46,11 +48,23 @@ from gendia.operations import (
     OperationContext,
     OperationResult,
     ReleaseOperation,
+    ScanOperation,
     StatusOperation,
     SyncOperation,
     VerifyOperation,
 )
-from gendia.operations import conventions as conventions_op
+from gendia.operations import (
+    conventions as conventions_op,
+)
+from gendia.operations import (
+    convert as convert_op,
+)
+from gendia.operations import (
+    generate as generate_op,
+)
+from gendia.operations import (
+    scan as scan_op,
+)
 from gendia.providers import build_provider
 from gendia.registries import build_registry
 from gendia.util.paths import env_file_path
@@ -145,6 +159,20 @@ def build_parser() -> argparse.ArgumentParser:
     # conventions [PATH] [--rules FILE] [--strict] [--json]
     conventions_op.add_subparser(sub)
 
+    # generate [--format ...] [--output FILE] [--execute] ...
+    generate_op.add_subparser(sub)
+
+    # scan [PATH] [--check-dirty] [--json]
+    scan_op.add_subparser(sub)
+
+    # convert URL... [--to ssh|https]
+    convert_op.add_subparser(sub)
+
+    # ssh {list, test, inspect, bootstrap}
+    from gendia.cli.commands import ssh as ssh_cmd  # noqa: PLC0415
+
+    ssh_cmd.add_subparser(sub)
+
     return parser
 
 
@@ -189,6 +217,12 @@ _DESCRIPTIONS = {
         "Lint repo hygiene: GitHub-special files, naming, ban-list glyphs, "
         "spec filename rules, sub-folder readmes, shell-script shebangs."
     ),
+    "generate": (
+        "Emit copy-paste git commands per detected SSH host "
+        "(text/script/json/markdown; --execute runs the bash form)."
+    ),
+    "scan": "Find git repos on disk and classify each (clean / dirty / orphan / https).",
+    "convert": "Flip git URLs between SSH and HTTPS (alias + insteadOf aware).",
 }
 
 
@@ -224,6 +258,13 @@ def dispatch(args: argparse.Namespace) -> int:  # noqa: PLR0911 — many sidecar
         return identity_cmd.dispatch(args)
     if args.command == "conventions":
         return conventions_op.dispatch(args)
+    if args.command == "ssh":
+        from gendia.cli.commands import ssh as ssh_cmd  # noqa: PLC0415
+
+        return ssh_cmd.dispatch(args)
+
+    if args.command in {"generate", "scan", "convert"}:
+        return _run_project_optional(args)
 
     try:
         config = load_config(project_path=args.config)
@@ -295,6 +336,106 @@ def _build_credentials(args: argparse.Namespace) -> CredentialResolver:
             # answer for VPS deployments where there's no keychain to talk to.
             backends.append(KeyringCredentialStore())
     return CredentialResolver(*backends)
+
+
+def _run_project_optional(args: argparse.Namespace) -> int:
+    """Run `generate` / `scan` / `convert`, which don't require a project block.
+
+    These ops still want a config (for accounts + forges_file). When loading
+    fails or no project exists, we fall back to a stub project so the existing
+    OperationContext shape stays usable.
+    """
+    config: GendiaConfig | None = None
+    try:
+        config = load_config(project_path=args.config)
+    except ConfigError as exc:
+        _log.warning("config load failed; continuing without it", extra={"error": str(exc)})
+
+    if config is None or config.project is None:
+        # Build a stub config that still preserves any accounts the user
+        # already configured (so generate can discover repos via providers).
+        accounts = config.accounts if config else {}
+        registries = config.registries if config else {}
+        defaults = config.defaults if config else Defaults()
+        forges_file = config.forges_file if config else None
+        stub_project = Project(
+            name="<no-project>",
+            account=next(iter(accounts), "<none>") or "<none>",
+            root=Path.cwd(),
+            repos=(RepoSpec(dir="."),),
+        )
+        if not accounts:
+            accounts = {
+                "<none>": Account(
+                    name="<none>",
+                    platform="github",
+                    credential_ref="STUB",
+                    org="<none>",
+                )
+            }
+        config = GendiaConfig(
+            accounts=accounts,
+            registries=registries,
+            project=stub_project,
+            defaults=defaults,
+            forges_file=forges_file,
+        )
+
+    credentials = _build_credentials(args)
+    project = config.project
+    if project is None:
+        # Defensive: the rebuild above guarantees a stub project, but mypy
+        # can't see that across the conditional reassignment.
+        raise RuntimeError("internal: project should not be None at this point")
+
+    account_name = project.account
+    if account_name not in config.accounts:
+        # Pick any available account as the provider seed; ops that don't
+        # need provider calls will still function.
+        account_name = next(iter(config.accounts))
+    account = config.account(account_name)
+    provider = build_provider(account, credentials)
+    registry = (
+        build_registry(config.registry(project.registry), credentials) if project.registry else None
+    )
+
+    ctx = OperationContext(
+        config=config,
+        project=project,
+        provider=provider,
+        registry=registry,
+        dry_run=getattr(args, "dry_run", False),
+        workers=(getattr(args, "concurrency", None) or config.defaults.concurrency),
+        only=getattr(args, "only", frozenset()) or frozenset(),
+        skip=getattr(args, "skip", frozenset()) or frozenset(),
+    )
+
+    operation: Operation
+    suppress_summary = False
+    if args.command == "generate":
+        forges_path = Path(config.forges_file).expanduser() if config.forges_file else None
+        operation = GenerateOperation(
+            ctx,
+            request=generate_op.request_from_args(args, forges_file=forges_path),
+        )
+        # The operation writes its own structured output; the summary line
+        # would only confuse json/script consumers.
+        suppress_summary = getattr(args, "fmt", "text") in {"json", "script"} or bool(
+            getattr(args, "output", None)
+        )
+    elif args.command == "scan":
+        operation = ScanOperation(ctx, request=scan_op.request_from_args(args))
+        suppress_summary = bool(getattr(args, "json_out", False))
+    elif args.command == "convert":
+        operation = ConvertOperation(ctx, request=convert_op.request_from_args(args))
+        suppress_summary = bool(getattr(args, "json_out", False))
+    else:
+        raise ValueError(f"unexpected command: {args.command}")
+
+    result = operation.run()
+    if not suppress_summary:
+        _print_result(result, args)
+    return 0 if result.all_ok else 1
 
 
 def _run_init(args: argparse.Namespace) -> int:

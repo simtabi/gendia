@@ -22,6 +22,7 @@ import sys
 from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
+from typing import Any
 
 from gendia.auth.env_file import secure_create_dir
 from gendia.observability.logger import get_logger
@@ -55,6 +56,14 @@ def add_subparser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser
         action="store_true",
         help="Print what would be written, don't actually create files.",
     )
+    p.add_argument(
+        "--from-ssh",
+        action="store_true",
+        help=(
+            "Synthesize accounts from ~/.ssh/config and merge them into "
+            "~/.config/gendia/gendia.json (use --dry-run to preview)."
+        ),
+    )
 
 
 _HANDLERS_WITH_FLAGS = {"local", "vps", "project", "docker"}
@@ -64,6 +73,9 @@ _HANDLERS_NO_FLAGS = {"k8s", "ci"}
 def dispatch(args: argparse.Namespace) -> int:
     if args.detect:
         return _print_detection()
+
+    if args.from_ssh:
+        return _setup_from_ssh(force=args.force, dry_run=args.dry_run)
 
     shape = args.shape or _resolve_default_shape(force=args.force)
 
@@ -415,6 +427,62 @@ def _setup_ci() -> int:
 
 
 # --- helpers -----------------------------------------------------------------
+
+
+def _setup_from_ssh(*, force: bool, dry_run: bool) -> int:
+    """Synthesize accounts from ~/.ssh/config and merge into gendia.json."""
+    import json  # noqa: PLC0415 — keep stdlib imports local to the rare path
+
+    from gendia.ssh.bootstrap import propose_accounts, render_proposed_config  # noqa: PLC0415
+    from gendia.ssh.config import SSHConfig  # noqa: PLC0415
+    from gendia.ssh.forges import load_registry  # noqa: PLC0415
+
+    cfg = SSHConfig.load()
+    if not cfg.hosts():
+        print("no Host entries in ~/.ssh/config; nothing to bootstrap")
+        return 1
+
+    stubs = propose_accounts(config=cfg, registry=load_registry())
+    if not stubs:
+        print(
+            "no recognized forge hosts in ~/.ssh/config "
+            "(use `gendia ssh list` to inspect the parser's view)."
+        )
+        return 1
+
+    proposal = render_proposed_config(stubs)
+    if dry_run:
+        sys.stdout.write(proposal)
+        print(f"\n(dry-run) would merge {len(stubs)} account(s) into ~/.config/gendia/gendia.json")
+        return 0
+
+    target = Path.home() / ".config" / "gendia" / "gendia.json"
+    target.parent.mkdir(parents=True, exist_ok=True)
+
+    existing: dict[str, Any] = {}
+    if target.is_file():
+        try:
+            existing = json.loads(target.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            if not force:
+                print(f"  ✗ {target} is not valid JSON: {exc}", file=sys.stderr)
+                print("    pass --force to overwrite the unparseable file", file=sys.stderr)
+                return 2
+            print(f"  ⚠ {target} is invalid JSON; --force given, overwriting")
+
+    accounts = dict(existing.get("accounts") or {})
+    proposed = json.loads(proposal)
+    accounts.update(proposed["accounts"])
+    existing["accounts"] = accounts
+
+    target.write_text(json.dumps(existing, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    print(f"  ✓ wrote {len(stubs)} account(s) to {target}")
+    print()
+    print("Next steps:")
+    print(f"  1. $EDITOR {target}             # review the proposal, fill in real scopes")
+    print("  2. gendia config set GIT_TOKEN_<LABEL>  # for each account credential_ref")
+    print("  3. gendia ssh inspect           # audit your SSH keys")
+    return 0
 
 
 def _example_text(name: str) -> str:

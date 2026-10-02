@@ -4,8 +4,11 @@ from __future__ import annotations
 
 from gendia.auth.resolver import CredentialResolver
 from gendia.config.schema import Account
+from gendia.providers.azure import AzureDevOpsProvider
 from gendia.providers.base import GitProvider
 from gendia.providers.bitbucket import BitbucketProvider
+from gendia.providers.bitbucket_server import BitbucketServerProvider
+from gendia.providers.gitea import GiteaProvider
 from gendia.providers.github import GitHubProvider
 from gendia.providers.gitlab import GitLabProvider
 
@@ -13,6 +16,9 @@ _PROVIDERS: dict[str, type[GitProvider]] = {
     "github": GitHubProvider,
     "gitlab": GitLabProvider,
     "bitbucket": BitbucketProvider,
+    "bitbucket-server": BitbucketServerProvider,
+    "gitea": GiteaProvider,
+    "azure": AzureDevOpsProvider,
 }
 
 

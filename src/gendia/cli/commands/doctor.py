@@ -110,6 +110,7 @@ def dispatch(args: argparse.Namespace) -> int:
     _check_env_file(report, args.env_file or env_file_path())
     _check_binaries(report)
     _check_ssh(report, args.config)
+    _check_ssh_keys(report)
     _check_credentials(report, args.config, args.env_file or env_file_path())
 
     report.render()
@@ -261,6 +262,25 @@ def _check_ssh(report: Report, project_config: Path | None) -> None:
             )
         else:
             report.add("ok", section, f"account {account.name!r}: key {key} mode {mode:o}")
+
+
+def _check_ssh_keys(report: Report) -> None:
+    """Audit IdentityFiles referenced in ~/.ssh/config (mode + strength + reuse)."""
+    section = "ssh keys"
+    from gendia.ssh.config import SSHConfig  # noqa: PLC0415
+    from gendia.ssh.inspector import audit_keys  # noqa: PLC0415
+
+    cfg = SSHConfig.load()
+    findings = audit_keys(cfg.hosts().exclude_wildcards())
+    if not findings:
+        return  # silent when there are no IdentityFile entries to audit
+    for finding in findings:
+        report.add(
+            severity=finding.severity,
+            section=section,
+            message=f"{finding.path}: {finding.message}",
+            fix=finding.fix,
+        )
 
 
 def _check_credentials(report: Report, project_config: Path | None, env_path: Path) -> None:

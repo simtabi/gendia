@@ -1,0 +1,65 @@
+{
+  "_comment": "Example showing the new SSH-aware fields: forges_file, manual_repos, and a Gitea + Azure DevOps account alongside GitHub/GitLab/Bitbucket.",
+
+  "forges_file": "~/.config/gendia/forges.json",
+
+  "accounts": {
+    "personal": {
+      "platform": "github",
+      "username": "yourhandle",
+      "credential_ref": "GITHUB_TOKEN_PERSONAL",
+      "ssh_key_path": "~/.ssh/keys/personal/id_ed25519",
+      "git_auth": "ssh",
+      "manual_repos": [
+        {
+          "host": "github-personal",
+          "org": "yourhandle",
+          "repos": ["dotfiles", "scratch"]
+        }
+      ]
+    },
+
+    "ghe-work": {
+      "platform": "github",
+      "host": "ghe.acme-corp.example",
+      "org": "platform",
+      "credential_ref": "GITHUB_TOKEN_GHE_WORK",
+      "git_auth": "https"
+    },
+
+    "self-hosted-gitlab": {
+      "platform": "gitlab",
+      "host": "gitlab.acme-corp.example",
+      "group": "tools",
+      "credential_ref": "GITLAB_TOKEN_INTERNAL"
+    },
+
+    "azure": {
+      "platform": "azure",
+      "org": "myorg",
+      "workspace": "Platform",
+      "credential_ref": "AZURE_DEVOPS_PAT",
+      "git_auth": "https"
+    },
+
+    "codeberg": {
+      "platform": "gitea",
+      "username": "yourhandle",
+      "credential_ref": "CODEBERG_TOKEN",
+      "git_auth": "ssh"
+    }
+  },
+
+  "registries": {
+    "packagist": {
+      "kind": "packagist",
+      "username": "your-packagist-handle",
+      "credential_ref": "PACKAGIST_API_TOKEN"
+    }
+  },
+
+  "defaults": {
+    "concurrency": 4,
+    "log_format": "human"
+  }
+}

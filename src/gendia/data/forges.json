@@ -1,0 +1,48 @@
+{
+  "_comment": "Forge registry for gendia. See gendia.ssh.forges. Override per-project via gendia.json's `forges_file`.",
+
+  "known_forges_exact": {
+    "github.com": "github",
+    "gitlab.com": "gitlab",
+    "bitbucket.org": "bitbucket",
+    "codeberg.org": "codeberg",
+    "gitea.com": "gitea",
+    "ssh.dev.azure.com": "azure-devops",
+    "vs-ssh.visualstudio.com": "azure-devops"
+  },
+
+  "known_forges_patterns": [
+    ["github", "github-enterprise"],
+    ["gitlab", "gitlab"],
+    ["forgejo", "forgejo"],
+    ["gitea", "gitea"],
+    ["bitbucket", "bitbucket-server"],
+    ["gogs", "gitea"]
+  ],
+
+  "public_forges": [
+    "github.com",
+    "gitlab.com",
+    "bitbucket.org",
+    "codeberg.org",
+    "gitea.com"
+  ],
+
+  "comment_keywords": [
+    ["github enterprise", "github-enterprise"],
+    ["github", "github"],
+    ["gitlab", "gitlab"],
+    ["bitbucket server", "bitbucket-server"],
+    ["bitbucket", "bitbucket"],
+    ["forgejo", "forgejo"],
+    ["codeberg", "codeberg"],
+    ["gitea", "gitea"],
+    ["azure devops", "azure-devops"],
+    ["gogs", "gitea"]
+  ],
+
+  "tlds": [
+    "com", "org", "net", "edu", "io", "dev",
+    "co", "uk", "us", "ca", "de", "fr"
+  ]
+}

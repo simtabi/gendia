@@ -1,10 +1,13 @@
 from gendia.operations.audit import AuditOperation
 from gendia.operations.base import Operation, OperationContext, OperationResult, RepoResult
 from gendia.operations.cleanup import CleanupOperation
+from gendia.operations.convert import ConvertOperation
+from gendia.operations.generate import GenerateOperation
 from gendia.operations.init import InitOperation
 from gendia.operations.inventory import InventoryOperation
 from gendia.operations.mirror import MirrorOperation
 from gendia.operations.release import ReleaseOperation
+from gendia.operations.scan import ScanOperation
 from gendia.operations.status import StatusOperation
 from gendia.operations.sync import SyncOperation
 from gendia.operations.verify import VerifyOperation
@@ -12,6 +15,8 @@ from gendia.operations.verify import VerifyOperation
 __all__ = [
     "AuditOperation",
     "CleanupOperation",
+    "ConvertOperation",
+    "GenerateOperation",
     "InitOperation",
     "InventoryOperation",
     "MirrorOperation",
@@ -20,6 +25,7 @@ __all__ = [
     "OperationResult",
     "ReleaseOperation",
     "RepoResult",
+    "ScanOperation",
     "StatusOperation",
     "SyncOperation",
     "VerifyOperation",
