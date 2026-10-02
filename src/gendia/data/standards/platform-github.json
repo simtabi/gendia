@@ -1,0 +1,54 @@
+{
+  "$schema": "https://simtabi.com/gendia/schemas/standards-v1.json",
+  "version": 1,
+  "category": "platform-github",
+  "rules": [
+    {
+      "id": "GH001",
+      "name": ".github/ directory exists",
+      "severity": "info",
+      "check": "directory_exists",
+      "args": { "paths": [".github"] },
+      "remediation": "Create a `.github/` directory for workflows, templates, CODEOWNERS, etc."
+    },
+    {
+      "id": "GH004",
+      "name": "CODEOWNERS present",
+      "severity": "info",
+      "check": "file_exists",
+      "args": {
+        "basenames": ["CODEOWNERS"],
+        "extensions": [""],
+        "locations": [".github/", "", "docs/"]
+      },
+      "fix": "create_default_codeowners",
+      "remediation": "Add a CODEOWNERS file (lookup order on GitHub: .github/ → root → docs/)."
+    },
+    {
+      "id": "GH006",
+      "name": "Pull request template present",
+      "severity": "info",
+      "check": "file_exists",
+      "args": {
+        "basenames": ["pull_request_template", "PULL_REQUEST_TEMPLATE"],
+        "extensions": [".md"],
+        "locations": ["", ".github/", "docs/"]
+      },
+      "fix": "create_default_pr_template",
+      "remediation": "Add `.github/PULL_REQUEST_TEMPLATE.md` to standardise PR descriptions."
+    },
+    {
+      "id": "GH003",
+      "name": "Dependabot or Renovate configured",
+      "severity": "info",
+      "check": "file_exists",
+      "args": {
+        "basenames": ["dependabot", "renovate"],
+        "extensions": [".yml", ".yaml", ".json", ".json5"],
+        "locations": ["", ".github/", ".gitlab/"]
+      },
+      "fix": "create_default_dependabot",
+      "remediation": "Add `.github/dependabot.yml` (GitHub-only) or a `renovate.json` (cross-platform)."
+    }
+  ]
+}

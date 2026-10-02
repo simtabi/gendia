@@ -1,0 +1,84 @@
+{
+  "$schema": "https://simtabi.com/gendia/schemas/standards-v1.json",
+  "version": 1,
+  "category": "essential-files",
+  "rules": [
+    {
+      "id": "R001",
+      "name": "README present",
+      "severity": "error",
+      "check": "file_exists",
+      "args": {
+        "basenames": ["README"],
+        "extensions": ["", ".md", ".rst", ".adoc", ".asciidoc", ".markdown", ".txt"],
+        "locations": ["", ".github/", "docs/"]
+      },
+      "remediation": "Add a README.md at the repository root.",
+      "fix": "create_default_readme"
+    },
+    {
+      "id": "R004",
+      "name": "LICENSE present",
+      "severity": "error",
+      "check": "file_exists",
+      "args": {
+        "basenames": ["LICENSE", "LICENCE", "COPYING"],
+        "extensions": ["", ".md", ".txt"],
+        "locations": [""]
+      },
+      "remediation": "Add an OSI-approved LICENSE at the repository root (https://choosealicense.com)."
+    },
+    {
+      "id": "R005",
+      "name": "LICENSE matches a recognised SPDX license",
+      "severity": "warning",
+      "check": "license_spdx",
+      "args": {},
+      "applies_when": {
+        "any_file_exists": ["LICENSE", "LICENSE.md", "LICENSE.txt", "LICENCE", "LICENCE.md", "COPYING"]
+      },
+      "remediation": "Use a verbatim SPDX license text from https://spdx.org/licenses/ for tooling compatibility."
+    },
+    {
+      "id": "R007",
+      "name": ".gitignore present",
+      "severity": "warning",
+      "check": "file_exists",
+      "args": {
+        "basenames": [".gitignore"],
+        "extensions": [""],
+        "locations": [""]
+      },
+      "remediation": "Start from a curated template at https://github.com/github/gitignore.",
+      "fix": "create_default_gitignore"
+    },
+    {
+      "id": "R009",
+      "name": ".gitattributes contains EOL normalisation",
+      "severity": "info",
+      "check": "regex_in_file",
+      "args": {
+        "path": ".gitattributes",
+        "pattern": "^\\*\\s+text\\s*=\\s*auto"
+      },
+      "applies_when": {
+        "any_file_exists": [".gitattributes"]
+      },
+      "remediation": "Add `* text=auto` near the top of .gitattributes for cross-platform line endings.",
+      "fix": "add_text_auto_to_gitattributes"
+    },
+    {
+      "id": "R010",
+      "name": ".editorconfig present",
+      "severity": "info",
+      "check": "file_exists",
+      "args": {
+        "basenames": [".editorconfig"],
+        "extensions": [""],
+        "locations": [""]
+      },
+      "remediation": "Add an .editorconfig — see https://editorconfig.org for the syntax.",
+      "fix": "create_default_editorconfig"
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "$schema": "https://simtabi.com/gendia/schemas/standards-v1.json",
+  "version": 1,
+  "category": "env-loaders",
+  "rules": [
+    {
+      "id": "DENV001",
+      "name": "No tracked .env file",
+      "severity": "error",
+      "check": "file_absent",
+      "args": {
+        "paths": [".env", ".env.local", ".env.development", ".env.production"]
+      },
+      "remediation": "Tracked .env files almost always leak secrets. Add to .gitignore and commit only .env.example."
+    },
+    {
+      "id": "DENV002",
+      "name": ".env.example present",
+      "severity": "info",
+      "check": "file_exists",
+      "args": {
+        "basenames": [".env.example", ".env.template", ".env.sample", ".env.dist"],
+        "extensions": [""],
+        "locations": [""]
+      },
+      "remediation": "Document required env keys in a tracked .env.example (no real values)."
+    },
+    {
+      "id": "DENV003",
+      "name": ".envrc.example present (direnv users)",
+      "severity": "info",
+      "check": "file_exists",
+      "args": {
+        "basenames": [".envrc.example", ".envrc.template"],
+        "extensions": [""],
+        "locations": [""]
+      },
+      "applies_when": { "any_file_exists": [".envrc"] },
+      "remediation": "Pair tracked .envrc.example with the gitignored .envrc so direnv users can bootstrap."
+    },
+    {
+      "id": "DENV004",
+      "name": "No tracked private-key files",
+      "severity": "error",
+      "check": "file_absent",
+      "args": {
+        "paths": ["id_rsa", "id_ed25519", "id_ecdsa", "id_dsa"]
+      },
+      "remediation": "Private keys must never be committed."
+    }
+  ]
+}

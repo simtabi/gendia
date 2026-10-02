@@ -1,0 +1,65 @@
+{
+  "$schema": "https://simtabi.com/gendia/schemas/standards-v1.json",
+  "version": 1,
+  "category": "migrations",
+  "rules": [
+    {
+      "id": "MIG001",
+      "name": "Migrations directory present",
+      "severity": "info",
+      "check": "directory_exists",
+      "args": {
+        "paths": [
+          "migrations",
+          "db/migrate",
+          "db/migrations",
+          "priv/repo/migrations",
+          "alembic/versions",
+          "prisma/migrations",
+          "src/main/resources/db/migration",
+          "src/migrations"
+        ]
+      },
+      "remediation": "Pick the ORM's conventional location (e.g. db/migrate for Rails, alembic/versions for Alembic) and keep all migrations there."
+    },
+    {
+      "id": "MIG002",
+      "name": "Migrations directory is non-empty",
+      "severity": "info",
+      "check": "glob_exists",
+      "args": {
+        "pattern": "*",
+        "base_dir": "migrations",
+        "recursive": true
+      },
+      "applies_when": { "any_file_exists": ["migrations/.gitkeep", "migrations/README.md"] },
+      "remediation": "An empty migrations/ directory usually means the schema is hand-managed — switch to versioned migrations."
+    },
+    {
+      "id": "MIG003",
+      "name": "Flyway-style versioned migrations follow V<N>__<name>.sql",
+      "severity": "info",
+      "check": "glob_exists",
+      "args": {
+        "pattern": "V*__*.sql",
+        "base_dir": "src/main/resources/db/migration",
+        "recursive": false
+      },
+      "applies_when": { "any_file_exists": ["pom.xml", "build.gradle", "build.gradle.kts"] },
+      "remediation": "Flyway expects files named V<version>__<description>.sql or R__<repeatable>.sql in src/main/resources/db/migration/."
+    },
+    {
+      "id": "MIG004",
+      "name": "Alembic migrations directory is structured",
+      "severity": "info",
+      "check": "glob_exists",
+      "args": {
+        "pattern": "*.py",
+        "base_dir": "alembic/versions",
+        "recursive": false
+      },
+      "applies_when": { "any_file_exists": ["alembic.ini"] },
+      "remediation": "Alembic places per-revision migrations in alembic/versions/<rev>_<slug>.py."
+    }
+  ]
+}

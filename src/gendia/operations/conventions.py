@@ -2,27 +2,39 @@
 
 A drop-in replacement for `check-repo-conventions.sh`-style scripts that
 validate a repository against shared documentation / structure rules.
-The original bash version hardcoded everything; this one is JSON-driven
-so each project (or each repo within one) can tune the rules without
-patching the tool.
 
 Why this lives in gendia: gendia already manages polyrepo workflows
 (sync, audit, release). Convention drift is one more axis of fleet
 hygiene — `audit` checks the *git* state, `conventions` checks the
 *documentation/structure* state.
 
-Surface:
+The verb has two cooperating engines:
 
-    gendia conventions [PATH] [--rules FILE] [--strict] [--json] [--no-banner]
+  1. **Legacy / hardcoded checks** — 10 sophisticated tree-walk checks with
+     per-rule exemption lists. Tuned by `--rules FILE` (legacy `Rules`
+     dataclass shape; see `Rules.from_dict` and `examples/conventions.json`).
 
-  - PATH defaults to the current directory (or, when run inside a gendia
-    project, every repo in the project).
-  - --rules points at a JSON file overriding the built-in defaults.
-  - --strict promotes warnings to non-zero exit (rc=1).
-  - --json emits a machine-parseable report for CI / log shippers.
+  2. **JSON-driven rule packs** — declarative rules from
+     `gendia.standards`, layered via `--profile NAME` (bundled packs like
+     `core`, `community`, `lang-python`) and `--rule-pack PATH`. Rule packs
+     reference small composable check kinds — adding a rule is JSON only.
 
-Exit codes match `gendia doctor`: 0 = ok, 1 = warnings only, 2 = at
-least one error.
+Both engines produce `Finding`s with identical shape and render through the
+same human / JSON formatters. They coexist by default; `--no-legacy` opts out
+of the hardcoded engine for users who only want declarative rules.
+
+Surface (current):
+
+    gendia conventions [PATH]
+        [--rules FILE]                   # legacy Rules JSON
+        [--rule-pack PATH ...]           # JSON rule packs (repeatable)
+        [--profile NAME]                 # bundled rule pack
+        [--no-legacy]                    # skip the hardcoded 10 checks
+        [--list-profiles]                # show bundled packs and exit
+        [--strict] [--json]
+
+Exit codes match `gendia doctor`: 0 = ok, 1 = warnings only with --strict,
+2 = at least one error.
 """
 
 from __future__ import annotations
@@ -584,7 +596,80 @@ def add_subparser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser
         "--rules",
         type=Path,
         default=None,
-        help="Path to a JSON rules file (overrides the built-in defaults).",
+        help="Path to a legacy JSON rules file (overrides the built-in defaults).",
+    )
+    p.add_argument(
+        "--rule-pack",
+        dest="rule_packs",
+        type=Path,
+        action="append",
+        default=[],
+        help=(
+            "Path to a JSON rule pack (data-driven rules). Repeatable. "
+            "Findings are merged with the legacy rules above."
+        ),
+    )
+    p.add_argument(
+        "--profile",
+        dest="profiles",
+        action="append",
+        default=[],
+        help=(
+            "Name of a bundled rule pack to load "
+            "(e.g. `core`). Repeatable: --profile core --profile lang-python."
+        ),
+    )
+    p.add_argument(
+        "--list-profiles",
+        action="store_true",
+        help="Print bundled rule packs / profiles and exit.",
+    )
+    p.add_argument(
+        "--list-rules",
+        action="store_true",
+        help="Print every rule from --profile / --rule-pack (after merging) and exit.",
+    )
+    p.add_argument(
+        "--explain",
+        dest="explain_rule",
+        default=None,
+        metavar="RULE_ID",
+        help="Print the long-form description of one rule and exit.",
+    )
+    p.add_argument(
+        "--no-legacy",
+        dest="no_legacy",
+        action="store_true",
+        help=(
+            "Skip the 10 hardcoded conventions checks. Use this when you "
+            "want JSON-driven rules only — pair with --profile / --rule-pack."
+        ),
+    )
+    p.add_argument(
+        "--fix",
+        dest="apply_fix",
+        action="store_true",
+        help=(
+            "After auditing, apply each JSON rule's bundled fix (when available) "
+            "to make findings disappear. Pair with --dry-run to preview."
+        ),
+    )
+    p.add_argument(
+        "--dry-run",
+        dest="fix_dry_run",
+        action="store_true",
+        help="With --fix, print the plan without writing.",
+    )
+    p.add_argument(
+        "--backup",
+        dest="fix_backup",
+        action="store_true",
+        help=(
+            "With --fix, copy each mutated file to <name>.bak before writing. "
+            "Create-only fixes (R001 README, GH004 CODEOWNERS, …) skip this — "
+            "they only run when the target is missing. Append/JSON-mutating "
+            "fixes (.gitattributes, .npmrc, package.json) honour it."
+        ),
     )
     p.add_argument(
         "--strict",
@@ -609,6 +694,239 @@ def _load_rules(path: Path | None) -> Rules:
     if not isinstance(raw, dict):
         raise ConfigError(f"rules file {path} must be a JSON object at the top level")
     return Rules.from_dict(raw)
+
+
+# Bundled packs available via `--profile`. Listed here so the CLI can introspect
+# them without scanning package data; new packs ship by appending one entry.
+_BUNDLED_PROFILES: tuple[str, ...] = (
+    "core",
+    "community",
+    "governance",
+    "platform-github",
+    "platform-gitlab",
+    "platform-bitbucket",
+    "lang-python",
+    "lang-node",
+    "lang-rust",
+    "lang-go",
+    "web-and-api",
+    "os-packaging",
+    "supply-chain",
+    "env-loaders",
+    "migrations",
+    "task-runners",
+)
+
+
+def _load_pack_rules(profiles: list[str], packs: list[Path]) -> tuple[Any, ...]:
+    """Resolve `--profile NAME` (repeatable) and `--rule-pack PATH` into Rules."""
+    from gendia import standards  # noqa: PLC0415 — keep cli/cold-start path small
+
+    out: list[standards.Rule] = []
+    for profile in profiles or ():
+        loaded = standards.load_bundled_pack(profile)
+        if not loaded:
+            print(
+                f"conventions: --profile {profile!r} not found among "
+                f"bundled packs ({', '.join(_BUNDLED_PROFILES)})",
+                file=sys.stderr,
+            )
+        out.extend(loaded)
+    for path in packs or ():
+        out.extend(standards.load_rule_pack(path))
+    return tuple(out)
+
+
+def _print_profiles() -> int:
+    print("Bundled rule packs (use --profile NAME):")
+    for name in _BUNDLED_PROFILES:
+        print(f"  {name}")
+    print()
+    print("Use --rule-pack PATH to load an arbitrary JSON pack from disk.")
+    print("Profiles compose: --profile core --profile lang-python.")
+    return 0
+
+
+def _print_rules(profiles: list[str], packs: list[Path]) -> int:
+    """Print every rule across the loaded profiles + packs."""
+    rules = _load_pack_rules(profiles, packs)
+    if not rules:
+        print(
+            "conventions: --list-rules needs --profile / --rule-pack "
+            "(use --list-profiles to see bundled options).",
+            file=sys.stderr,
+        )
+        return 2
+    width = max((len(r.id) for r in rules), default=4)
+    for rule in rules:
+        cat = f" [{rule.category}]" if rule.category else ""
+        print(f"  {rule.id:<{width}}  {rule.severity:<5}{cat}  {rule.name}")
+    return 0
+
+
+# Legacy hardcoded rules — the IDs emitted by the 10 `_check_*` functions.
+# JSON packs use `R001`, `H001`, etc.; the legacy engine uses these slugs.
+# `--explain` falls back to this table when a rule ID isn't found in any
+# JSON pack so users see consistent output across both engines.
+_LEGACY_RULE_EXPLAIN: dict[str, dict[str, str]] = {
+    "github-special": {
+        "name": "GitHub special files present",
+        "severity": "error (when required), info (when optional)",
+        "category": "legacy/github",
+        "check_kind": "_check_github_special (Python)",
+        "remediation": (
+            "Required defaults: LICENSE, CONTRIBUTING.md, CODE_OF_CONDUCT.md. "
+            "Optional reported when present: CODEOWNERS, SECURITY.md, SUPPORT.md, FUNDING.yml, "
+            "PULL_REQUEST_TEMPLATE.md. Override via `github_special_required` in the rules JSON."
+        ),
+    },
+    "md-kebab-case": {
+        "name": "Markdown filenames are lowercase-kebab-case",
+        "severity": "error",
+        "category": "legacy/naming",
+        "check_kind": "_check_md_kebab_case (Python)",
+        "remediation": (
+            "Markdown filenames must be all-lowercase, hyphen-separated. "
+            "Exempt by default: README.md, CHANGELOG.md, LICENSE.md, the GitHub special files. "
+            "Add custom exemptions via `md_kebab_case_exempt` in the rules JSON."
+        ),
+    },
+    "forbidden-chars": {
+        "name": "No forbidden glyphs / characters in docs",
+        "severity": "warn",
+        "category": "legacy/style",
+        "check_kind": "_check_forbidden_chars (Python)",
+        "remediation": (
+            "Default ban list: em-dash `—` (U+2014). Extend via `forbidden_chars` in the rules "
+            "JSON to ban any glyphs your house style disallows."
+        ),
+    },
+    "readme-frontmatter": {
+        "name": "README declares owner + last-updated frontmatter",
+        "severity": "warn (off by default)",
+        "category": "legacy/docs",
+        "check_kind": "_check_readme_frontmatter (Python)",
+        "remediation": (
+            "Enable by setting `require_readme_frontmatter: true`. The README must include "
+            "`**Owner:**` and `**Last Updated:**` lines near the top."
+        ),
+    },
+    "decorator-emojis": {
+        "name": "No decorator / ornament emojis in markdown",
+        "severity": "warn",
+        "category": "legacy/style",
+        "check_kind": "_check_decorator_emojis (Python)",
+        "remediation": (
+            "Ornamental emojis (⭐ 🎯 💼 ✨ 🚀 etc.) are flagged. Status emojis "
+            "(✅ ⏳ 📋 ⛔ 🔴 🟠 🟡 🟢) are explicitly allowed. Add per-file exemptions via "
+            "`decorator_emojis_exempt` (glob patterns) in the rules JSON."
+        ),
+    },
+    "spec-date-prefix": {
+        "name": "Spec files don't carry a date prefix in their filename",
+        "severity": "error",
+        "category": "legacy/specs",
+        "check_kind": "_check_spec_filenames (Python)",
+        "remediation": (
+            "Filenames like `2026-05-08-thing.md` mix metadata into the path. Move the date "
+            "into frontmatter and rename to `thing.md`. The spec directory is `docs/specs/` "
+            "by default; override via `spec_dir`."
+        ),
+    },
+    "spec-number-prefix": {
+        "name": "Spec files don't carry a numeric prefix in their filename",
+        "severity": "error",
+        "category": "legacy/specs",
+        "check_kind": "_check_spec_filenames (Python)",
+        "remediation": (
+            "Filenames like `001-thing.md` make the on-disk order brittle. Move sequential IDs "
+            "into the README spec index and rename to `thing.md`."
+        ),
+    },
+    "subfolder-readme": {
+        "name": "No sub-folder readme.md files",
+        "severity": "warn",
+        "category": "legacy/docs",
+        "check_kind": "_check_subfolder_readmes (Python)",
+        "remediation": (
+            "One README per repo at the root (and `docs/README.md` for the docs index). "
+            "Sub-folder readmes drift out of sync and confuse `tree`-style overviews."
+        ),
+    },
+    "stale-link-pattern": {
+        "name": "No links to date-prefixed / numbered / sub-folder readme paths",
+        "severity": "warn",
+        "category": "legacy/docs",
+        "check_kind": "_check_stale_link_patterns (Python)",
+        "remediation": (
+            "Markdown links that target the file-naming antipatterns above (numbered specs, "
+            "sub-folder readmes, date-prefixed specs) are flagged so they get fixed alongside "
+            "the renames."
+        ),
+    },
+    "sh-shebang": {
+        "name": "Shell scripts carry a shebang and the executable bit",
+        "severity": "error (no shebang), warn (no +x)",
+        "category": "legacy/scripts",
+        "check_kind": "_check_shell_shebang (Python)",
+        "remediation": (
+            "Every `*.sh` file must start with `#!/usr/bin/env bash` (or `#!/bin/sh`). "
+            "Set the executable bit with `chmod +x path/to/script.sh`."
+        ),
+    },
+    "trailing-whitespace": {
+        "name": "No trailing whitespace in markdown",
+        "severity": "warn (off by default)",
+        "category": "legacy/style",
+        "check_kind": "_check_trailing_whitespace (Python)",
+        "remediation": (
+            "Enable by setting `forbid_trailing_whitespace_md: true`. Most editors strip "
+            "trailing whitespace on save; an .editorconfig with `trim_trailing_whitespace = true` "
+            "for `[*.md]` enforces it across the team."
+        ),
+    },
+}
+
+
+def _explain_rule(rule_id: str, profiles: list[str], packs: list[Path]) -> int:
+    """Print one rule's full description and remediation.
+
+    First looks in the JSON-driven rule packs (current selection + all bundled
+    profiles as a fallback). Falls back to the legacy hardcoded rules table so
+    `--explain github-special` works the same way as `--explain R001`.
+    """
+    rules = _load_pack_rules(profiles, packs) or _load_pack_rules(list(_BUNDLED_PROFILES), [])
+    for rule in rules:
+        if rule.id == rule_id:
+            print(f"Rule: {rule.id}")
+            print(f"Name: {rule.name}")
+            print(f"Severity: {rule.severity}")
+            if rule.category:
+                print(f"Category: {rule.category}")
+            print(f"Check kind: {rule.check}")
+            if rule.applies_when:
+                print(f"Applies when: {rule.applies_when}")
+            if rule.args:
+                print(f"Args: {rule.args}")
+            if rule.remediation:
+                print()
+                print(f"Remediation: {rule.remediation}")
+            return 0
+    # Legacy fallback: the rule might be one of the 10 hardcoded checks.
+    legacy = _LEGACY_RULE_EXPLAIN.get(rule_id)
+    if legacy is not None:
+        print(f"Rule: {rule_id}")
+        print(f"Name: {legacy['name']}")
+        print(f"Severity: {legacy['severity']}")
+        print(f"Category: {legacy['category']}")
+        print(f"Check kind: {legacy['check_kind']}")
+        print()
+        print(f"Remediation: {legacy['remediation']}")
+        print()
+        print("(legacy hardcoded rule — configured via the `rules` JSON file, not a profile pack)")
+        return 0
+    print(f"conventions: rule {rule_id!r} not found", file=sys.stderr)
+    return 2
 
 
 def _iter_targets(args: argparse.Namespace) -> Iterable[tuple[str, Path]]:
@@ -641,8 +959,12 @@ def _render_human(reports: tuple[RepoReport, ...]) -> None:
         print()
 
 
-def _render_json(reports: tuple[RepoReport, ...]) -> None:
-    payload = {
+def _render_json(
+    reports: tuple[RepoReport, ...],
+    *,
+    fixes: list[dict[str, Any]] | None = None,
+) -> None:
+    payload: dict[str, Any] = {
         "reports": [
             {
                 "repo": r.repo,
@@ -651,19 +973,49 @@ def _render_json(reports: tuple[RepoReport, ...]) -> None:
             for r in reports
         ]
     }
+    if fixes is not None:
+        payload["fixes"] = fixes
     json.dump(payload, sys.stdout, indent=2)
     sys.stdout.write("\n")
 
 
-def dispatch(args: argparse.Namespace) -> int:
+def dispatch(args: argparse.Namespace) -> int:  # noqa: PLR0911, PLR0912 — introspection flags + JSON/human branches
+    if getattr(args, "list_profiles", False):
+        return _print_profiles()
+
+    profiles = getattr(args, "profiles", []) or []
+    rule_packs = getattr(args, "rule_packs", []) or []
+
+    if getattr(args, "list_rules", False):
+        return _print_rules(profiles, rule_packs)
+
+    if getattr(args, "explain_rule", None):
+        return _explain_rule(args.explain_rule, profiles, rule_packs)
+
     try:
         rules = _load_rules(args.rules)
     except ConfigError as exc:
         print(f"conventions: {exc}", file=sys.stderr)
         return 2
 
+    pack_rules = _load_pack_rules(profiles, rule_packs)
+
+    from gendia import standards  # noqa: PLC0415 — used only when packs are present
+
+    no_legacy = bool(getattr(args, "no_legacy", False))
+    if no_legacy and not pack_rules:
+        print(
+            "conventions: --no-legacy passed without --profile / --rule-pack — nothing to run",
+            file=sys.stderr,
+        )
+        return 2
+
+    # When --fix is set, remember each report's root so we can apply fixes
+    # in the same iteration order without re-walking targets.
+    roots_by_label: dict[str, Path] = {}
     reports: list[RepoReport] = []
     for label, root in _iter_targets(args):
+        roots_by_label[label] = root
         if not root.is_dir():
             reports.append(
                 RepoReport(
@@ -679,18 +1031,125 @@ def dispatch(args: argparse.Namespace) -> int:
                 )
             )
             continue
-        reports.append(RepoReport(repo=label, findings=run_checks(root, rules)))
+        legacy: tuple[Finding, ...] = () if no_legacy else run_checks(root, rules)
+        extra = standards.run_rules(root, pack_rules) if pack_rules else ()
+        reports.append(RepoReport(repo=label, findings=tuple(legacy) + tuple(extra)))
+
+    apply_fix_flag = bool(getattr(args, "apply_fix", False))
+    fix_dry_run = bool(getattr(args, "fix_dry_run", False))
+    fix_backup = bool(getattr(args, "fix_backup", False))
 
     if args.json_out:
-        _render_json(tuple(reports))
+        # JSON mode: gather structured fix results silently, then emit one blob.
+        fix_results: list[dict[str, Any]] | None = None
+        if apply_fix_flag:
+            fix_results = _apply_fixes(
+                reports,
+                roots_by_label,
+                pack_rules,
+                dry_run=fix_dry_run,
+                backup=fix_backup,
+                quiet=True,
+            )
+        _render_json(tuple(reports), fixes=fix_results)
     else:
+        # Human mode: findings first, then per-rule fix actions + summary.
         _render_human(tuple(reports))
+        if apply_fix_flag:
+            _apply_fixes(
+                reports,
+                roots_by_label,
+                pack_rules,
+                dry_run=fix_dry_run,
+                backup=fix_backup,
+                quiet=False,
+            )
 
     if any(r.has_error for r in reports):
         return 2
     if args.strict and any(r.has_warn for r in reports):
         return 1
     return 0
+
+
+def _apply_fixes(  # noqa: PLR0912 — dry-run / quiet / backup matrix is intentional
+    reports: list[RepoReport],
+    roots_by_label: dict[str, Path],
+    pack_rules: tuple[Any, ...],
+    *,
+    dry_run: bool,
+    backup: bool = False,
+    quiet: bool = False,
+) -> list[dict[str, Any]]:
+    """Apply each finding's bundled fix (when available).
+
+    Returns a list of per-finding fix outcomes. When `quiet=True`, the inline
+    per-rule prints are suppressed (used by JSON mode, which emits the
+    structured list instead). The returned shape is:
+
+        {"repo": str, "rule": str, "name": str,
+         "action": "applied" | "would-fix" | "no-op",
+         "backup": bool}
+    """
+    from gendia import standards  # noqa: PLC0415 — keep cold-start path small
+
+    rules_by_id: dict[str, standards.Rule] = {r.id: r for r in pack_rules}
+    results: list[dict[str, Any]] = []
+    n_applied = 0
+    n_no_op = 0
+
+    for report in reports:
+        root = roots_by_label.get(report.repo)
+        if root is None or not root.is_dir():
+            continue
+        for finding in report.findings:
+            rule = rules_by_id.get(finding.rule)
+            if rule is None or rule.fix is None:
+                continue
+            if dry_run:
+                results.append(
+                    {
+                        "repo": report.repo,
+                        "rule": rule.id,
+                        "name": rule.name,
+                        "action": "would-fix",
+                        "backup": False,
+                    }
+                )
+                if not quiet:
+                    print(f"  would-fix [{rule.id}] {rule.name}")
+                continue
+            applied = standards.apply_fix(root, rule, backup=backup)
+            action = "applied" if applied else "no-op"
+            results.append(
+                {
+                    "repo": report.repo,
+                    "rule": rule.id,
+                    "name": rule.name,
+                    "action": action,
+                    "backup": backup and applied,
+                }
+            )
+            if not quiet:
+                tag = "fixed    " if applied else "no-op    "
+                print(f"  {tag} [{rule.id}] {rule.name}")
+            if applied:
+                n_applied += 1
+            else:
+                n_no_op += 1
+
+    if quiet:
+        return results
+
+    n_fixable = len(results)
+    if n_fixable == 0:
+        print("(no fixable findings)")
+    elif dry_run:
+        print(f"\n{n_fixable} finding(s) have bundled fixes; re-run without --dry-run to apply.")
+    else:
+        suffix = " (.bak backups written for mutated files)" if backup else ""
+        print(f"\nfix summary: {n_applied} applied, {n_no_op} no-op (already fine){suffix}")
+    return results
 
 
 # Re-export for tests / programmatic use.

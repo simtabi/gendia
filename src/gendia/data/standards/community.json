@@ -1,0 +1,119 @@
+{
+  "$schema": "https://simtabi.com/gendia/schemas/standards-v1.json",
+  "version": 1,
+  "category": "community-health",
+  "rules": [
+    {
+      "id": "H001",
+      "name": "CONTRIBUTING present",
+      "severity": "warning",
+      "check": "file_exists",
+      "args": {
+        "basenames": ["CONTRIBUTING"],
+        "extensions": ["", ".md", ".rst", ".txt"],
+        "locations": ["", ".github/", "docs/"]
+      },
+      "fix": "create_default_contributing",
+      "remediation": "Add CONTRIBUTING.md describing how to file issues, set up the dev env, and review PRs."
+    },
+    {
+      "id": "H002",
+      "name": "CODE_OF_CONDUCT present",
+      "severity": "warning",
+      "check": "file_exists",
+      "args": {
+        "basenames": ["CODE_OF_CONDUCT"],
+        "extensions": ["", ".md", ".rst", ".txt"],
+        "locations": ["", ".github/", "docs/"]
+      },
+      "fix": "create_default_code_of_conduct",
+      "remediation": "Adopt the Contributor Covenant: https://www.contributor-covenant.org/"
+    },
+    {
+      "id": "H003",
+      "name": "SECURITY present",
+      "severity": "warning",
+      "check": "file_exists",
+      "args": {
+        "basenames": ["SECURITY"],
+        "extensions": ["", ".md", ".rst", ".txt"],
+        "locations": ["", ".github/", "docs/"]
+      },
+      "fix": "create_default_security",
+      "remediation": "Add SECURITY.md with a private vulnerability-reporting channel."
+    },
+    {
+      "id": "H004",
+      "name": "SECURITY documents how to report",
+      "severity": "info",
+      "check": "regex_in_file",
+      "args": {
+        "path": "SECURITY.md",
+        "pattern": "(?i)(report|disclose|contact|vulnerab|security@|email)"
+      },
+      "applies_when": { "any_file_exists": ["SECURITY.md", ".github/SECURITY.md", "docs/SECURITY.md"] },
+      "remediation": "Add a 'How to report' section pointing to a private channel."
+    },
+    {
+      "id": "H005",
+      "name": "SUPPORT present",
+      "severity": "info",
+      "check": "file_exists",
+      "args": {
+        "basenames": ["SUPPORT"],
+        "extensions": ["", ".md", ".rst", ".txt"],
+        "locations": ["", ".github/", "docs/"]
+      },
+      "remediation": "Add SUPPORT.md telling users where to get help (mailing list / chat / Stack Overflow tag)."
+    },
+    {
+      "id": "H006",
+      "name": "CHANGELOG present",
+      "severity": "warning",
+      "check": "file_exists",
+      "args": {
+        "basenames": ["CHANGELOG"],
+        "extensions": ["", ".md", ".rst", ".txt"],
+        "locations": [""]
+      },
+      "fix": "create_default_changelog",
+      "remediation": "Adopt Keep a Changelog: https://keepachangelog.com"
+    },
+    {
+      "id": "H007",
+      "name": "CHANGELOG follows Keep a Changelog format",
+      "severity": "info",
+      "check": "regex_in_file",
+      "args": {
+        "path": "CHANGELOG.md",
+        "pattern": "(?i)keep[\\s_-]?a[\\s_-]?changelog"
+      },
+      "applies_when": { "any_file_exists": ["CHANGELOG.md"] },
+      "remediation": "Reference https://keepachangelog.com near the top of CHANGELOG.md."
+    },
+    {
+      "id": "H008",
+      "name": "CHANGELOG has [Unreleased] section",
+      "severity": "info",
+      "check": "regex_in_file",
+      "args": {
+        "path": "CHANGELOG.md",
+        "pattern": "##\\s*\\[Unreleased\\]"
+      },
+      "applies_when": { "any_file_exists": ["CHANGELOG.md"] },
+      "remediation": "Add an `## [Unreleased]` section to accumulate pending changes between releases."
+    },
+    {
+      "id": "H010",
+      "name": "AUTHORS / CONTRIBUTORS / MAINTAINERS file present",
+      "severity": "info",
+      "check": "file_exists",
+      "args": {
+        "basenames": ["AUTHORS", "CONTRIBUTORS", "MAINTAINERS"],
+        "extensions": ["", ".md", ".txt"],
+        "locations": [""]
+      },
+      "remediation": "Track contributors in an AUTHORS / MAINTAINERS file (or a section in README)."
+    }
+  ]
+}

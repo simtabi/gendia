@@ -1,0 +1,19 @@
+{
+  "$schema": "https://simtabi.com/gendia/schemas/standards-v1.json",
+  "version": 1,
+  "category": "platform-bitbucket",
+  "rules": [
+    {
+      "id": "BB001",
+      "name": "bitbucket-pipelines.yml present",
+      "severity": "info",
+      "check": "file_exists",
+      "args": {
+        "basenames": ["bitbucket-pipelines"],
+        "extensions": [".yml", ".yaml"],
+        "locations": [""]
+      },
+      "remediation": "Add `bitbucket-pipelines.yml` at the repo root."
+    }
+  ]
+}
