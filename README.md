@@ -25,10 +25,11 @@ Existing multi-repo tools (`mr`, `mu-repo`, `gita`) stop at clone / pull / statu
 
 - **CI/CD-first design**: identical CLI on dev box, VPS cron, and Docker-based runners. JSON log format for structured log shippers; exit code reflects all-ok / failed.
 - **Packagist-aware out of the box**: `sync` and `release` know how to fire the Packagist update endpoint when tags get pushed. npm and PyPI included as first-class push registries.
-- **Three platforms from day one**: GitHub, GitLab (cloud or self-hosted), Bitbucket Cloud.
+- **Six platforms from day one**: GitHub (cloud + Enterprise), GitLab (cloud + self-hosted), Bitbucket Cloud + Server/Data Center, Gitea (Forgejo, Codeberg via the same wire format), and Azure DevOps.
+- **SSH-config aware**: detects which forges your `~/.ssh/config` already lists, audits IdentityFile permissions + key strength, generates copy-paste git commands, converts URLs between SSH and HTTPS (alias + `insteadOf` aware), and bootstraps gendia accounts straight from your SSH setup.
 - **Two transports**: SSH (with optional explicit private-key path, `IdentitiesOnly=yes` to block agent enumeration) or HTTPS-with-API-token (via `GIT_ASKPASS`, never via URL embed, never in argv).
 - **Multi-org / multi-account**: any number of accounts in one config; each repo binds to one account. A leak in one account's credentials can't touch another's repos.
-- **Fourteen first-class verbs**: `status`, `sync`, `inventory`, `audit`, `cleanup`, `verify`, `release`, `mirror`, `init`, `config`, `setup`, `doctor`, `identity`, `conventions` — fleet operations, first-run wizards, per-account git-identity management, and JSON-driven repo-hygiene linting.
+- **Eighteen first-class verbs**: `status`, `sync`, `inventory`, `audit`, `cleanup`, `verify`, `release`, `mirror`, `init`, `config`, `setup`, `doctor`, `identity`, `conventions`, `generate`, `scan`, `convert`, `ssh` — fleet operations, first-run wizards, per-account git-identity management, JSON-driven repo-hygiene linting, SSH-config-driven command generation, on-disk repo discovery, URL conversion, and SSH-config inspection / bootstrap.
 - **Dry-run on everything**: `--dry-run` is honoured by every mutating operation.
 - **Zero runtime dependencies**: stdlib only. `keyring` is an optional extra for OS-keychain-backed secrets.
 - **Docker-native**: slim image (~80 MB), runs as non-root, mounts your `~/.config/gendia` and SSH keys; `docker compose run gendia sync` is the deployable unit.
@@ -173,6 +174,20 @@ gendia conventions [PATH] [--rules FILE] [--strict] [--json]
                                                # lint repo hygiene: GitHub-special files, naming,
                                                # ban-list glyphs, spec filenames, sub-folder readmes,
                                                # shell-script shebangs (JSON-driven, fully tunable)
+gendia conventions --list-profiles             # 16 bundled rule packs
+gendia conventions --explain R005 --profile core
+gendia conventions . --no-legacy --profile core --profile lang-node --fix [--dry-run]
+                                               # JSON-driven standards engine + autofix
+                                               # (21 rules with fix:; idempotent + atomic writes)
+
+# Scaffolds:
+gendia init --list-scaffolds                   # 13 bundled scaffolds
+gendia init --scaffold python-uv --target ./foo --var name=foo --var module=foo \
+            --var description="A package"     # render template + git init + license_text + audit
+
+# Interactive menu (every verb with drill-down by category):
+./bin/gendia-menu                              # or: make menu
+./bin/gendia-menu --list                       # non-interactive option dump (CI / docs)
 
 # Modifiers (work with most commands):
 --dry-run                  show what would happen, do nothing
@@ -236,19 +251,83 @@ Override anything via JSON. Every key is optional; omit it to keep the default. 
 
 Exit codes match `gendia doctor`: `0` = ok, `1` = warnings only (with `--strict`), `2` = at least one error.
 
+## JSON-driven standards engine + autofix
+
+Layered on top of the legacy rules above, `gendia conventions` ships a **JSON-driven standards engine** with 16 bundled rule packs (71 rules) and `--fix` automation for 21 of them. Add a rule by dropping a JSON file in `src/gendia/data/standards/`; add a check kind by registering one Python function in `standards.py`. No DSL.
+
+```bash
+# Explore the bundled packs
+gendia conventions --list-profiles                  # 16 packs (core, community, lang-node, …)
+gendia conventions --list-rules --profile core      # rules in the pack
+gendia conventions --explain R005 --profile core    # rule details
+
+# Run against any path, composing multiple packs
+gendia conventions . --no-legacy \
+    --profile core --profile community --profile platform-github --profile lang-node
+
+# Autofix where the rule pack has a fix kind
+gendia conventions . --no-legacy --profile core --profile community --fix --dry-run
+gendia conventions . --no-legacy --profile core --profile community --fix
+```
+
+**Fix-kind coverage today**: 21 rules across 6 packs auto-fix to good defaults. Universal essentials (README / .gitignore / .editorconfig / `* text=auto` in .gitattributes), community health (CONTRIBUTING / CODE_OF_CONDUCT / SECURITY / CHANGELOG with Keep-a-Changelog skeleton), GitHub workflows (CODEOWNERS / PR template / Dependabot / CodeQL / OpenSSF Scorecard / Security Insights), and **5 JSON-mutating fixes for `package.json`**: `name` (slugified directory basename), `version` (`0.1.0`), `license` (auto-detected from existing LICENSE file), `engines.node`, `packageManager`. All fixes are idempotent; mutating fixes use atomic writes + refuse symlinks + tolerate malformed JSON.
+
+## Repo scaffolds
+
+`gendia init --scaffold` renders bundled templates with `${var}` substitution and post-actions (`git_init`, `license_text`, `audit`).
+
+```bash
+gendia init --list-scaffolds                        # 13 scaffolds
+gendia init --scaffold python-uv --target ~/projects/foo \
+    --var name=foo --var module=foo --var description="A package"
+```
+
+| Scaffold | Stack |
+|---|---|
+| `bare` | Universal-set repo + `git_init` + `license_text` |
+| `python-uv` / `python-poetry` | Python package, src/ layout, ruff + mypy + pytest |
+| `rust` / `go` | Cargo + clippy + rustfmt / `go.mod` + golangci-lint |
+| `node-pnpm` / `node-bun` | TypeScript + Biome + Vitest / Bun |
+| `php-composer` / `ruby-gem` | Composer + PHPStan + PHPUnit / Gemspec + RSpec |
+| `dotnet` | .NET SDK + solution + xUnit |
+| `docs-mkdocs` | MkDocs Material |
+| `monorepo-pnpm-turbo` | pnpm workspaces + Turborepo |
+| `java-gradle` | Gradle Kotlin DSL + JUnit 5 (run `gradle wrapper` once after scaffold) |
+
+**17 bundled license texts** for the `license_text` post-action: MIT, Apache-2.0, BSD-2/3-Clause, ISC, Unlicense, GPL/LGPL/AGPL-3.0-or-later, MPL-2.0, MIT-0, Zlib, EUPL-1.2, CC-BY-4.0, BSL-1.1, OFL-1.1, Artistic-2.0.
+
+## Interactive menu
+
+`bin/gendia-menu` is a numbered drill-down menu wrapping all 18 verbs by category (Inspect / Release & Sync / Standards / Scaffold / Config). It auto-resolves the local `bin/gendia` shim during development and falls back to whatever `gendia` is on `PATH`.
+
+```bash
+make menu                # launch the menu
+./bin/gendia-menu        # equivalent
+./bin/gendia-menu --list # non-interactive option dump (CI / docs)
+```
+
+The menu is shipped inside the Docker image, so `make docker-exec` drops you into a working toolkit shell.
+
 ## Make targets
 
 ```bash
 make help              # list targets
+make menu              # launch the interactive numbered menu
 make install           # uv tool install (or pip fallback)
 make install-dev       # editable install with [dev] extras
 make test              # pytest
-make lint              # ruff
+make lint              # ruff check
+make format            # ruff format (rewrites files)
+make format-check      # ruff format --check (mirrors CI)
 make typecheck         # mypy
+make check             # lint + format-check + typecheck + test (CI gate)
 make sync              # gendia sync (extra args via ARGS=...)
 make release REPO=core VERSION=1.0.1
 make audit / cleanup / verify / mirror / init / status / inventory
-make docker-build / docker-shell / docker-push REGISTRY=ghcr.io/your-org
+# One-shot containers:
+make docker-build / docker-shell / docker-run VERB=sync / docker-push REGISTRY=ghcr.io/your-org
+# Long-lived compose service:
+make docker-up / docker-exec / docker-logs / docker-ps / docker-down / docker-host-shell
 ```
 
 ## Docker / VPS
