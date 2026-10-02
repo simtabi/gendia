@@ -2,7 +2,11 @@
 
 ## Reporting a vulnerability
 
-Email **security@simtabi.com**. Do not open a public GitHub issue.
+Use GitHub private vulnerability reporting: open a private report at
+<https://github.com/simtabi/gendia/security/advisories/new>. The report stays
+attached to the repository, with a draft advisory and a CVE request path. If you
+do not use GitHub, email **security@simtabi.com**. Do not open a public GitHub
+issue.
 
 Acknowledgement within 48 hours. Patch SLA: 14 days for severity ≤ 3, 30 days for severity 4. Coordinated disclosure with a default 90-day embargo from triage.
 
