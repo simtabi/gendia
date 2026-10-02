@@ -141,9 +141,15 @@ def load_config(
                 f"project {project.name!r} references unknown registry {project.registry!r}"
             )
 
+    forges_file: str | None = None
+    raw_forges_file = merged.get("forges_file")
+    if raw_forges_file:
+        forges_file = str(raw_forges_file)
+
     return GendiaConfig(
         accounts=accounts,
         registries=registries,
         project=project,
         defaults=defaults,
+        forges_file=forges_file,
     )

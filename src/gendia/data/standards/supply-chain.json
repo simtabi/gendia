@@ -1,0 +1,64 @@
+{
+  "$schema": "https://simtabi.com/gendia/schemas/standards-v1.json",
+  "version": 1,
+  "category": "supply-chain",
+  "rules": [
+    {
+      "id": "SUPPLY005",
+      "name": "CodeQL workflow installed",
+      "severity": "info",
+      "check": "file_exists",
+      "args": {
+        "basenames": ["codeql"],
+        "extensions": [".yml", ".yaml"],
+        "locations": [".github/workflows/"]
+      },
+      "fix": "create_default_codeql_workflow",
+      "remediation": "Add .github/workflows/codeql.yml from GitHub's 'Set up code scanning' button."
+    },
+    {
+      "id": "SUPPLY006",
+      "name": "Container scanner configured (Trivy / Grype / Snyk)",
+      "severity": "info",
+      "check": "file_exists",
+      "args": {
+        "basenames": [
+          ".trivyignore",
+          "trivy",
+          ".grype",
+          ".snyk"
+        ],
+        "extensions": ["", ".yaml", ".yml"],
+        "locations": [""]
+      },
+      "applies_when": { "any_file_exists": ["Dockerfile", "Containerfile"] },
+      "remediation": "Wire a container scanner (Trivy / Grype / Snyk) into CI when shipping container images."
+    },
+    {
+      "id": "SUPPLY007",
+      "name": "OpenSSF Scorecard workflow installed",
+      "severity": "info",
+      "check": "file_exists",
+      "args": {
+        "basenames": ["scorecard", "scorecards"],
+        "extensions": [".yml", ".yaml"],
+        "locations": [".github/workflows/"]
+      },
+      "fix": "create_default_scorecard_workflow",
+      "remediation": "Adopt the OpenSSF Scorecard workflow for automated security posture scoring."
+    },
+    {
+      "id": "SUPPLY008",
+      "name": "OpenSSF Security Insights published",
+      "severity": "info",
+      "check": "file_exists",
+      "args": {
+        "basenames": ["security-insights"],
+        "extensions": [".yml", ".yaml"],
+        "locations": ["", ".github/", ".gitlab/"]
+      },
+      "fix": "create_default_security_insights",
+      "remediation": "Publish a security-insights.yml — machine-readable security-posture metadata."
+    }
+  ]
+}

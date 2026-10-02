@@ -1,0 +1,18 @@
+using Xunit;
+
+namespace ${name}.Tests;
+
+public class GreeterTests
+{
+    [Fact]
+    public void Version_is_non_empty()
+    {
+        Assert.False(string.IsNullOrEmpty(Greeter.Version));
+    }
+
+    [Fact]
+    public void Greet_includes_target()
+    {
+        Assert.Contains("world", Greeter.Greet("world"));
+    }
+}

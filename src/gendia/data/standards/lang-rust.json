@@ -1,0 +1,58 @@
+{
+  "$schema": "https://simtabi.com/gendia/schemas/standards-v1.json",
+  "version": 1,
+  "category": "language-rust",
+  "rules": [
+    {
+      "id": "RUST001",
+      "name": "Cargo.toml present",
+      "severity": "info",
+      "check": "file_exists",
+      "args": {
+        "basenames": ["Cargo"],
+        "extensions": [".toml"],
+        "locations": [""]
+      },
+      "remediation": "Rust crates require Cargo.toml at the package root."
+    },
+    {
+      "id": "RUST002",
+      "name": "Cargo.lock committed for binary crates",
+      "severity": "warning",
+      "check": "file_exists",
+      "args": {
+        "basenames": ["Cargo"],
+        "extensions": [".lock"],
+        "locations": [""]
+      },
+      "applies_when": { "any_file_exists": ["src/main.rs"] },
+      "remediation": "Binary crates should commit Cargo.lock for reproducible builds. Library-only crates (src/lib.rs without src/main.rs) may exclude it."
+    },
+    {
+      "id": "RUST003",
+      "name": "rust-toolchain.toml preferred over plain rust-toolchain",
+      "severity": "info",
+      "check": "file_exists",
+      "args": {
+        "basenames": ["rust-toolchain"],
+        "extensions": [".toml"],
+        "locations": [""]
+      },
+      "applies_when": { "any_file_exists": ["Cargo.toml"] },
+      "remediation": "Use rust-toolchain.toml (TOML) over the legacy plain-text rust-toolchain file."
+    },
+    {
+      "id": "RUST004",
+      "name": "rustfmt.toml present (style consistency)",
+      "severity": "info",
+      "check": "file_exists",
+      "args": {
+        "basenames": ["rustfmt", ".rustfmt"],
+        "extensions": [".toml"],
+        "locations": [""]
+      },
+      "applies_when": { "any_file_exists": ["Cargo.toml"] },
+      "remediation": "Add rustfmt.toml so contributors share formatting rules."
+    }
+  ]
+}

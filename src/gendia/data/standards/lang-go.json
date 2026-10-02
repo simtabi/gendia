@@ -1,0 +1,57 @@
+{
+  "$schema": "https://simtabi.com/gendia/schemas/standards-v1.json",
+  "version": 1,
+  "category": "language-go",
+  "rules": [
+    {
+      "id": "GO001",
+      "name": "go.mod present",
+      "severity": "info",
+      "check": "file_exists",
+      "args": {
+        "basenames": ["go"],
+        "extensions": [".mod"],
+        "locations": [""]
+      },
+      "remediation": "Initialise the module with `go mod init <module-path>`."
+    },
+    {
+      "id": "GO002",
+      "name": "go.sum committed",
+      "severity": "warning",
+      "check": "file_exists",
+      "args": {
+        "basenames": ["go"],
+        "extensions": [".sum"],
+        "locations": [""]
+      },
+      "applies_when": { "any_file_exists": ["go.mod"] },
+      "remediation": "Always commit go.sum — it's the lockfile; without it builds aren't reproducible."
+    },
+    {
+      "id": "GO003",
+      "name": "go.mod declares a `go` directive",
+      "severity": "info",
+      "check": "regex_in_file",
+      "args": {
+        "path": "go.mod",
+        "pattern": "(?m)^go\\s+1\\.\\d+"
+      },
+      "applies_when": { "any_file_exists": ["go.mod"] },
+      "remediation": "Add a `go 1.22` (or current) directive to go.mod for explicit toolchain compatibility."
+    },
+    {
+      "id": "GO004",
+      "name": "golangci-lint configured",
+      "severity": "info",
+      "check": "file_exists",
+      "args": {
+        "basenames": [".golangci"],
+        "extensions": [".yml", ".yaml", ".toml"],
+        "locations": [""]
+      },
+      "applies_when": { "any_file_exists": ["go.mod"] },
+      "remediation": "Add .golangci.yml so contributors share lint rules."
+    }
+  ]
+}

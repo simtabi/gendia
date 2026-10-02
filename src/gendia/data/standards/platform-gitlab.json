@@ -1,0 +1,19 @@
+{
+  "$schema": "https://simtabi.com/gendia/schemas/standards-v1.json",
+  "version": 1,
+  "category": "platform-gitlab",
+  "rules": [
+    {
+      "id": "GL001",
+      "name": ".gitlab-ci.yml present",
+      "severity": "info",
+      "check": "file_exists",
+      "args": {
+        "basenames": [".gitlab-ci"],
+        "extensions": [".yml", ".yaml"],
+        "locations": [""]
+      },
+      "remediation": "Add `.gitlab-ci.yml` at the repo root (GitLab does not look in subdirectories)."
+    }
+  ]
+}

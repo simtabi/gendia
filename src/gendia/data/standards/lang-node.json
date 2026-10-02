@@ -1,0 +1,139 @@
+{
+  "$schema": "https://simtabi.com/gendia/schemas/standards-v1.json",
+  "version": 1,
+  "category": "language-node",
+  "rules": [
+    {
+      "id": "JS001",
+      "name": "package.json present",
+      "severity": "info",
+      "check": "file_exists",
+      "args": {
+        "basenames": ["package"],
+        "extensions": [".json"],
+        "locations": [""]
+      },
+      "remediation": "Add a package.json at the repo root."
+    },
+    {
+      "id": "JS002A",
+      "name": "package.json declares a name",
+      "severity": "warning",
+      "check": "regex_in_file",
+      "args": {
+        "path": "package.json",
+        "pattern": "\"name\"\\s*:\\s*\"[^\"]+\""
+      },
+      "applies_when": { "any_file_exists": ["package.json"] },
+      "fix": "set_package_name",
+      "remediation": "Set the `name` field in package.json."
+    },
+    {
+      "id": "JS002B",
+      "name": "package.json declares a version",
+      "severity": "warning",
+      "check": "regex_in_file",
+      "args": {
+        "path": "package.json",
+        "pattern": "\"version\"\\s*:\\s*\"[^\"]+\""
+      },
+      "applies_when": { "any_file_exists": ["package.json"] },
+      "fix": "set_package_version",
+      "remediation": "Set the `version` field (SemVer) in package.json."
+    },
+    {
+      "id": "JS002C",
+      "name": "package.json declares a license",
+      "severity": "warning",
+      "check": "regex_in_file",
+      "args": {
+        "path": "package.json",
+        "pattern": "\"license\"\\s*:\\s*"
+      },
+      "applies_when": { "any_file_exists": ["package.json"] },
+      "fix": "set_package_license",
+      "remediation": "Set the SPDX `license` field — keep it consistent with the LICENSE file."
+    },
+    {
+      "id": "JS003",
+      "name": "Exactly one Node lockfile committed",
+      "severity": "warning",
+      "check": "one_of_files",
+      "args": {
+        "groups": [
+          ["package-lock.json"],
+          ["yarn.lock"],
+          ["pnpm-lock.yaml"],
+          ["bun.lockb", "bun.lock"]
+        ],
+        "expected": "exactly_one"
+      },
+      "applies_when": { "any_file_exists": ["package.json"] },
+      "remediation": "Multiple lockfiles in one repo cause non-deterministic installs. Commit exactly one (npm / yarn / pnpm / bun)."
+    },
+    {
+      "id": "JS004",
+      "name": "package.json declares engines.node",
+      "severity": "info",
+      "check": "regex_in_file",
+      "args": {
+        "path": "package.json",
+        "pattern": "\"engines\"\\s*:\\s*\\{[^}]*\"node\"\\s*:"
+      },
+      "applies_when": { "any_file_exists": ["package.json"] },
+      "fix": "set_engines_node",
+      "remediation": "Pin a minimum Node version with `\"engines\": { \"node\": \">=20\" }`."
+    },
+    {
+      "id": "JS005",
+      "name": "tsconfig.json present (TypeScript projects)",
+      "severity": "info",
+      "check": "file_exists",
+      "args": {
+        "basenames": ["tsconfig"],
+        "extensions": [".json"],
+        "locations": [""]
+      },
+      "remediation": "Add tsconfig.json if the project uses TypeScript."
+    },
+    {
+      "id": "JS007",
+      "name": "package.json sets packageManager (corepack)",
+      "severity": "info",
+      "check": "regex_in_file",
+      "args": {
+        "path": "package.json",
+        "pattern": "\"packageManager\"\\s*:\\s*\""
+      },
+      "applies_when": { "any_file_exists": ["package.json"] },
+      "fix": "set_package_manager",
+      "remediation": "Pin the package manager: `\"packageManager\": \"pnpm@9.7.0\"` (corepack-aware)."
+    },
+    {
+      "id": "JS008",
+      "name": ".npmrc enforces engine-strict",
+      "severity": "info",
+      "check": "regex_in_file",
+      "args": {
+        "path": ".npmrc",
+        "pattern": "(?im)^\\s*engine-strict\\s*=\\s*true"
+      },
+      "applies_when": { "any_file_exists": [".npmrc"] },
+      "fix": "append_engine_strict_to_npmrc",
+      "remediation": "Add `engine-strict=true` to .npmrc so the engines field is enforced rather than advisory."
+    },
+    {
+      "id": "JS009",
+      "name": ".npmrc disables lifecycle scripts (supply-chain hardening)",
+      "severity": "info",
+      "check": "regex_in_file",
+      "args": {
+        "path": ".npmrc",
+        "pattern": "(?im)^\\s*ignore-scripts\\s*=\\s*true"
+      },
+      "applies_when": { "any_file_exists": [".npmrc"] },
+      "fix": "append_ignore_scripts_to_npmrc",
+      "remediation": "Set `ignore-scripts=true` in .npmrc; allow-list per-trusted-package overrides explicitly."
+    }
+  ]
+}

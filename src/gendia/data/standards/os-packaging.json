@@ -1,0 +1,49 @@
+{
+  "$schema": "https://simtabi.com/gendia/schemas/standards-v1.json",
+  "version": 1,
+  "category": "os-packaging",
+  "rules": [
+    {
+      "id": "OS001",
+      "name": "debian/ packaging directory present",
+      "severity": "info",
+      "check": "directory_exists",
+      "args": { "paths": ["debian"] },
+      "remediation": "If shipping a Debian/Ubuntu package, place packaging recipes under debian/."
+    },
+    {
+      "id": "OS002",
+      "name": "RPM .spec file present",
+      "severity": "info",
+      "check": "glob_exists",
+      "args": {
+        "pattern": "*.spec",
+        "base_dir": "",
+        "recursive": false
+      },
+      "applies_when": { "any_file_exists": ["rpm/.gitkeep", "rpm/CHANGELOG"] },
+      "remediation": "RPM packaging expects a top-level <pkg>.spec file (or one under rpm/)."
+    },
+    {
+      "id": "OS003",
+      "name": "snapcraft.yaml present",
+      "severity": "info",
+      "check": "file_exists",
+      "args": {
+        "basenames": ["snapcraft"],
+        "extensions": [".yaml", ".yml"],
+        "locations": ["", "snap/"]
+      },
+      "remediation": "If shipping a Snap, the canonical manifest is snapcraft.yaml or snap/snapcraft.yaml."
+    },
+    {
+      "id": "OS004",
+      "name": "data/ packaging metadata directory present",
+      "severity": "info",
+      "check": "directory_exists",
+      "args": { "paths": ["data"] },
+      "applies_when": { "any_file_exists": ["snapcraft.yaml", "snap/snapcraft.yaml"] },
+      "remediation": "AppStream / desktop metadata conventionally lives under data/<app-id>.metainfo.xml + data/<app-id>.desktop."
+    }
+  ]
+}

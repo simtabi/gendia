@@ -1,0 +1,17 @@
+# Cross-platform line endings
+* text=auto
+*.sh text eol=lf
+*.bat text eol=crlf
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+
+# Linguist hints
+docs/**     linguist-documentation
+*.md        linguist-documentation
+dist/**     linguist-generated
+*.min.js    linguist-generated
+vendor/**   linguist-vendored
+third_party/** linguist-vendored

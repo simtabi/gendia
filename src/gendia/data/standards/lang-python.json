@@ -1,0 +1,55 @@
+{
+  "$schema": "https://simtabi.com/gendia/schemas/standards-v1.json",
+  "version": 1,
+  "category": "language-python",
+  "rules": [
+    {
+      "id": "PY001",
+      "name": "pyproject.toml present",
+      "severity": "info",
+      "check": "file_exists",
+      "args": {
+        "basenames": ["pyproject"],
+        "extensions": [".toml"],
+        "locations": [""]
+      },
+      "remediation": "Modern Python projects use pyproject.toml (PEP 518/621). Migrate from setup.py / setup.cfg if needed."
+    },
+    {
+      "id": "PY002",
+      "name": "pyproject.toml uses PEP 621 [project] table",
+      "severity": "info",
+      "check": "regex_in_file",
+      "args": {
+        "path": "pyproject.toml",
+        "pattern": "^\\[project\\]"
+      },
+      "applies_when": { "any_file_exists": ["pyproject.toml"] },
+      "remediation": "Move package metadata into a `[project]` table per PEP 621 — better tool interop."
+    },
+    {
+      "id": "PY004",
+      "name": "Python version pinned",
+      "severity": "info",
+      "check": "regex_in_file",
+      "args": {
+        "path": "pyproject.toml",
+        "pattern": "(?im)^\\s*requires-python\\s*="
+      },
+      "applies_when": { "any_file_exists": ["pyproject.toml"] },
+      "remediation": "Declare `requires-python = \">=3.x\"` in pyproject.toml `[project]`, or commit `.python-version` / `.tool-versions`."
+    },
+    {
+      "id": "PY004B",
+      "name": ".python-version present (alternative pin)",
+      "severity": "info",
+      "check": "file_exists",
+      "args": {
+        "basenames": [".python-version", ".tool-versions"],
+        "extensions": [""],
+        "locations": [""]
+      },
+      "remediation": "Pin the Python version with .python-version (pyenv) or .tool-versions (asdf / mise)."
+    }
+  ]
+}

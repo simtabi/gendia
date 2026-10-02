@@ -1,0 +1,43 @@
+{
+  "$schema": "https://simtabi.com/gendia/schemas/standards-v1.json",
+  "version": 1,
+  "category": "task-runners",
+  "rules": [
+    {
+      "id": "TASK001",
+      "name": "At most one task runner adopted",
+      "severity": "info",
+      "check": "one_of_files",
+      "args": {
+        "groups": [
+          ["Makefile", "GNUmakefile"],
+          ["Justfile", "justfile", ".justfile"],
+          ["Taskfile.yml", "Taskfile.yaml", ".taskfile.yml"],
+          ["Earthfile"],
+          ["magefile.go"]
+        ],
+        "expected": "at_most_one"
+      },
+      "remediation": "Two task runners in one repo (e.g. Makefile + Justfile) usually means an aborted migration. Pick one."
+    },
+    {
+      "id": "TASK002",
+      "name": "At least one task runner present",
+      "severity": "info",
+      "check": "one_of_files",
+      "args": {
+        "groups": [
+          ["Makefile", "GNUmakefile"],
+          ["Justfile", "justfile", ".justfile"],
+          ["Taskfile.yml", "Taskfile.yaml"],
+          ["Earthfile"],
+          ["magefile.go"],
+          ["tasks.py"],
+          ["noxfile.py"]
+        ],
+        "expected": "at_least_one"
+      },
+      "remediation": "Capture the project's common dev commands (build, test, lint) in a Makefile / Justfile / Taskfile so onboarding is one command away."
+    }
+  ]
+}

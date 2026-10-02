@@ -13,11 +13,28 @@ from gendia.providers.base import GitProvider, ProviderError, RepoInfo
 
 
 class GitHubProvider(GitProvider):
-    _API_ROOT = "https://api.github.com"
+    _PUBLIC_HOST = "github.com"
+    _PUBLIC_API = "https://api.github.com"
 
     @property
     def platform(self) -> str:
         return "github"
+
+    @property
+    def _is_enterprise(self) -> bool:
+        host = self._account.host
+        return bool(host) and host != self._PUBLIC_HOST
+
+    @property
+    def _host(self) -> str:
+        return self._account.host or self._PUBLIC_HOST
+
+    @property
+    def _API_ROOT(self) -> str:  # noqa: N802 — name kept for backwards compat
+        # GitHub Enterprise Server exposes its REST API at /api/v3.
+        if self._is_enterprise:
+            return f"https://{self._host}/api/v3"
+        return self._PUBLIC_API
 
     def _auth_header(self) -> str:
         return f"Bearer {self._token}"
@@ -25,12 +42,13 @@ class GitHubProvider(GitProvider):
     # --- URL helpers ---------------------------------------------------------
 
     def clone_url(self, slug: str, *, ssh: bool = True) -> str:
+        host = self._host
         if ssh:
-            return f"git@github.com:{slug}.git"
-        return f"https://github.com/{slug}.git"
+            return f"git@{host}:{slug}.git"
+        return f"https://{host}/{slug}.git"
 
     def web_url(self, slug: str) -> str:
-        return f"https://github.com/{slug}"
+        return f"https://{self._host}/{slug}"
 
     # --- queries -------------------------------------------------------------
 
@@ -101,3 +119,8 @@ class GitHubProvider(GitProvider):
             default_branch=raw.get("default_branch") or "main",
             private=bool(raw.get("private", False)),
         )
+
+    @property
+    def host(self) -> str:
+        """Public alias for the resolved host (used by tests + URL helpers)."""
+        return self._host

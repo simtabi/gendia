@@ -1,10 +1,9 @@
 name: Tests
 
 on:
-  push:
-    branches: [main, develop]
   pull_request:
     branches: [main, develop]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -62,6 +61,18 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e .
+      - name: wheel builds and bundles the data directory
+        # The editable install above never builds a wheel, so a broken wheel
+        # config (e.g. a force-include that duplicates files the package
+        # already ships) would pass every other step and fail only at
+        # release or `docker build`. Build it and check the data is inside.
+        run: |
+          python -m pip wheel --no-deps -w /tmp/wheel .
+          files=$(python -m zipfile -l /tmp/wheel/*.whl)
+          for f in gendia/data/forges.json gendia/data/standards/core.json \
+                   gendia/data/scaffolds/bare.json gendia/data/scaffolds/_common/.gitignore; do
+              echo "$files" | grep -qF "$f" || { echo "missing from wheel: $f"; exit 1; }
+          done
       - name: gendia --version
         run: gendia --version
       - name: gendia setup --detect (clean host returns 1)
@@ -88,3 +99,38 @@ jobs:
           if [ "$rc" != "1" ]; then
               echo "expected exit 1 (warnings), got $rc"; exit 1
           fi
+
+      - name: standards engine — list profiles
+        # Should print the 16 bundled rule packs from bundled JSON resources.
+        # Regresses if `_BUNDLED_PROFILES` falls out of sync with the data.
+        working-directory: /tmp
+        run: |
+          count=$(gendia conventions --list-profiles | grep -cE '^  [a-z]')
+          if [ "$count" -lt 16 ]; then
+              echo "expected at least 16 bundled profiles, got $count"; exit 1
+          fi
+
+      - name: standards engine — list scaffolds
+        # Should print the 13 bundled scaffolds from bundled JSON resources.
+        working-directory: /tmp
+        run: |
+          count=$(gendia init --list-scaffolds | grep -cE '^  [a-z]')
+          if [ "$count" -lt 13 ]; then
+              echo "expected at least 13 bundled scaffolds, got $count"; exit 1
+          fi
+
+      - name: standards engine — --fix --dry-run on a fresh empty dir
+        # Regression guard for `--fix` + `--dry-run` argparse wiring and the
+        # bundled fix kinds. Expects at least one `would-fix` line for an
+        # empty repo (R001 README is missing, etc.).
+        run: |
+          rm -rf /tmp/fix-smoke && mkdir /tmp/fix-smoke
+          gendia conventions /tmp/fix-smoke --no-legacy --profile core --fix --dry-run \
+              | grep -q 'would-fix' \
+              || (echo "expected '--fix --dry-run' to print 'would-fix' lines"; exit 1)
+
+      - name: bin/gendia-menu --list parses cleanly
+        # Bash-syntax + resolution smoke for the interactive menu.
+        run: |
+          bash -n bin/gendia-menu
+          bin/gendia-menu --list | grep -q '\[INSPECT\]'

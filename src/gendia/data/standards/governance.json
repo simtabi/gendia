@@ -1,0 +1,67 @@
+{
+  "$schema": "https://simtabi.com/gendia/schemas/standards-v1.json",
+  "version": 1,
+  "category": "governance",
+  "rules": [
+    {
+      "id": "G001",
+      "name": "GOVERNANCE present",
+      "severity": "info",
+      "check": "file_exists",
+      "args": {
+        "basenames": ["GOVERNANCE"],
+        "extensions": ["", ".md", ".rst", ".txt"],
+        "locations": ["", "docs/", "governance/"]
+      },
+      "remediation": "Document the decision-making model — who can merge, how RFCs get accepted, conflict resolution."
+    },
+    {
+      "id": "G002",
+      "name": "ROADMAP present",
+      "severity": "info",
+      "check": "file_exists",
+      "args": {
+        "basenames": ["ROADMAP"],
+        "extensions": ["", ".md", ".rst", ".txt"],
+        "locations": ["", "docs/"]
+      },
+      "remediation": "Publish a ROADMAP.md (themes / accepted features / explicitly declined ideas)."
+    },
+    {
+      "id": "G003",
+      "name": ".mailmap present",
+      "severity": "info",
+      "check": "file_exists",
+      "args": {
+        "basenames": [".mailmap"],
+        "extensions": [""],
+        "locations": [""]
+      },
+      "remediation": "Use .mailmap to consolidate identities in `git log` / `git blame` after email changes."
+    },
+    {
+      "id": "G004",
+      "name": "NOTICE present (Apache-2.0 dependencies)",
+      "severity": "info",
+      "check": "file_exists",
+      "args": {
+        "basenames": ["NOTICE"],
+        "extensions": ["", ".md", ".txt"],
+        "locations": [""]
+      },
+      "remediation": "Apache-2.0 redistributions require carrying a NOTICE file when one exists upstream."
+    },
+    {
+      "id": "G005",
+      "name": "THIRD_PARTY_LICENSES file present",
+      "severity": "info",
+      "check": "file_exists",
+      "args": {
+        "basenames": ["THIRD_PARTY_NOTICES", "THIRD_PARTY_LICENSES"],
+        "extensions": ["", ".md", ".txt"],
+        "locations": ["", "docs/"]
+      },
+      "remediation": "Aggregate bundled-OSS attribution in THIRD_PARTY_LICENSES.md."
+    }
+  ]
+}

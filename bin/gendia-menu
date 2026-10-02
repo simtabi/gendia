@@ -1,0 +1,257 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC2034 # MENU_* / TOP_LEVEL are read via `local -n` namerefs
+#
+# bin/gendia-menu — interactive numbered menu wrapping the gendia CLI.
+#
+# Usage:
+#   ./bin/gendia-menu             # top-level menu
+#   ./bin/gendia-menu --list      # non-interactive — print every option as a flat list
+#   ./bin/gendia-menu --help      # short help
+#
+# Picks the local `bin/gendia` shim if present (development), falling back to
+# whatever `gendia` is on PATH (installed wheel). Override with GENDIA_BIN.
+
+set -euo pipefail
+
+# --- resolution -------------------------------------------------------------
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [[ -n "${GENDIA_BIN:-}" ]]; then
+    GENDIA="${GENDIA_BIN}"
+elif [[ -x "${SCRIPT_DIR}/gendia" ]]; then
+    GENDIA="${SCRIPT_DIR}/gendia"
+elif command -v gendia >/dev/null 2>&1; then
+    GENDIA="$(command -v gendia)"
+else
+    echo "gendia-menu: cannot find the gendia executable." >&2
+    echo "  Tried: \$GENDIA_BIN, ${SCRIPT_DIR}/gendia, command -v gendia" >&2
+    echo "  Install with 'make install' or run from the repo root." >&2
+    exit 127
+fi
+
+# --- styling ----------------------------------------------------------------
+
+if [[ -t 1 ]] && [[ -z "${NO_COLOR:-}" ]]; then
+    BOLD=$'\033[1m'; DIM=$'\033[2m'; CYAN=$'\033[36m'; YELLOW=$'\033[33m'; GREEN=$'\033[32m'; RESET=$'\033[0m'
+else
+    BOLD=""; DIM=""; CYAN=""; YELLOW=""; GREEN=""; RESET=""
+fi
+
+banner() {
+    printf '\n%s%s%s\n' "${BOLD}${CYAN}" "$1" "${RESET}"
+    printf '%s%s%s\n' "${DIM}" "$(printf '%*s' "${#1}" '' | tr ' ' '─')" "${RESET}"
+}
+
+prompt() { printf '%s%s%s ' "${YELLOW}" "$1" "${RESET}"; }
+
+run() {
+    printf '\n%s$ %s %s%s\n' "${GREEN}" "$(basename "${GENDIA}")" "$*" "${RESET}"
+    "${GENDIA}" "$@" || true
+    printf '\n%s(press Enter to return to the menu)%s ' "${DIM}" "${RESET}"
+    read -r _
+}
+
+# --- option catalog ---------------------------------------------------------
+#
+# Each MENU_* array entry is "Label::verb [args...]". An entry whose verb
+# starts with `@` is a sub-menu dispatcher (handled in dispatch()).
+
+MENU_INSPECT=(
+    "Status (branch / clean / ahead / latest-tag per repo)::status"
+    "Inventory (synced / pending / untracked / missing)::inventory"
+    "Doctor (system-wide health check)::doctor"
+    "Audit (hygiene: clean tree, tags, composer.json, …)::audit"
+    "Scan a directory tree for git repos::@scan"
+)
+
+MENU_RELEASE=(
+    "Sync (push commits + tags, notify registry)::sync"
+    "Release a single repo::@release"
+    "Mirror (clone every repo to a target directory)::@mirror"
+    "Verify (run each repo's verify[] commands)::verify"
+    "Cleanup (drop vendor/, node_modules/, …)::cleanup"
+)
+
+MENU_STANDARDS=(
+    "List bundled rule packs::conventions --list-profiles"
+    "List rules in a pack::@conventions-list-rules"
+    "Explain a single rule::@conventions-explain"
+    "Audit this dir against a pack::@conventions-run"
+    "Audit + auto-fix (writes files)::@conventions-fix"
+)
+
+MENU_SCAFFOLD=(
+    "List bundled scaffolds::init --list-scaffolds"
+    "Scaffold a new repo (interactive)::@init-scaffold"
+    "Scaffold gendia.json into current dir::init"
+)
+
+MENU_CONFIG=(
+    "Config (list / get / set / edit / path / doctor)::@config"
+    "Setup (local / vps / docker / k8s / ci)::@setup"
+    "Identity (per-account git identity)::@identity"
+    "SSH (list / test / inspect / bootstrap)::@ssh"
+    "Generate (emit per-host git commands)::@generate"
+    "Convert (flip git URLs SSH ⇄ HTTPS)::@convert"
+)
+
+TOP_LEVEL=(
+    "Inspect (read-only)::@menu-inspect"
+    "Release & Sync (mutations)::@menu-release"
+    "Standards audit (JSON-driven --profile / --fix)::@menu-standards"
+    "Scaffold new repos::@menu-scaffold"
+    "Config / SSH / Identity::@menu-config"
+    "Run gendia --help::--help"
+)
+
+# --- list mode --------------------------------------------------------------
+
+list_mode() {
+    printf '%sgendia-menu — full option list%s\n' "${BOLD}" "${RESET}"
+    printf 'Resolved gendia: %s\n\n' "${GENDIA}"
+    for grp in INSPECT RELEASE STANDARDS SCAFFOLD CONFIG; do
+        printf '%s[%s]%s\n' "${BOLD}" "${grp}" "${RESET}"
+        local -n arr="MENU_${grp}"
+        for entry in "${arr[@]}"; do
+            printf '  • %s\n' "${entry%%::*}"
+        done
+        printf '\n'
+    done
+}
+
+# --- interactive prompts for verbs that need args --------------------------
+
+dispatch() {
+    case "$1" in
+        @quit) return 1 ;;
+        @menu-inspect)   show_menu "Inspect" MENU_INSPECT ;;
+        @menu-release)   show_menu "Release & Sync" MENU_RELEASE ;;
+        @menu-standards) show_menu "Standards audit" MENU_STANDARDS ;;
+        @menu-scaffold)  show_menu "Scaffold" MENU_SCAFFOLD ;;
+        @menu-config)    show_menu "Config" MENU_CONFIG ;;
+        @scan)
+            prompt "Path to scan [.]:"; read -r path
+            run scan "${path:-.}"
+            ;;
+        @release)
+            prompt "Repo (e.g. myorg/core):"; read -r repo
+            prompt "Version (e.g. 1.0.1):"; read -r version
+            [[ -z "$repo" || -z "$version" ]] && { echo "Both repo and version are required."; return; }
+            run release "$repo" "$version"
+            ;;
+        @mirror)
+            prompt "Target directory:"; read -r target
+            [[ -z "$target" ]] && { echo "Target is required."; return; }
+            run mirror "$target"
+            ;;
+        @conventions-list-rules)
+            prompt "Profile name (e.g. core):"; read -r pack
+            run conventions --list-rules --profile "${pack:-core}"
+            ;;
+        @conventions-explain)
+            prompt "Rule id (e.g. R005):"; read -r rule
+            prompt "Profile (default: core):"; read -r pack
+            run conventions --explain "$rule" --profile "${pack:-core}"
+            ;;
+        @conventions-run)
+            prompt "Path to audit [.]:"; read -r path
+            prompt "Profiles (space-separated; default: core):"; read -r profiles
+            local -a args=(conventions "${path:-.}" --no-legacy)
+            for p in ${profiles:-core}; do args+=(--profile "$p"); done
+            run "${args[@]}"
+            ;;
+        @conventions-fix)
+            prompt "Path to audit + fix [.]:"; read -r path
+            prompt "Profiles (space-separated; default: core):"; read -r profiles
+            prompt "Dry run? [y/N]:"; read -r dry
+            local -a args=(conventions "${path:-.}" --no-legacy --fix)
+            for p in ${profiles:-core}; do args+=(--profile "$p"); done
+            [[ "$dry" =~ ^[Yy] ]] && args+=(--dry-run)
+            run "${args[@]}"
+            ;;
+        @init-scaffold)
+            "${GENDIA}" init --list-scaffolds
+            prompt "Scaffold id:"; read -r sid
+            prompt "Target directory:"; read -r target
+            prompt "name=value pairs (space-separated, e.g. name=foo module=foo):"; read -r vars
+            [[ -z "$sid" || -z "$target" ]] && { echo "Scaffold id and target are required."; return; }
+            local -a args=(init --scaffold "$sid" --target "$target")
+            for kv in $vars; do args+=(--var "$kv"); done
+            run "${args[@]}"
+            ;;
+        @config)   prompt "Subcommand (list/get/set/unset/edit/path/doctor):"; read -r sub; run config "$sub" ;;
+        @setup)    prompt "Shape (local/vps/project/docker/k8s/ci):"; read -r shape; run setup --shape "$shape" ;;
+        @identity) prompt "Subcommand (list/check/apply/setup):"; read -r sub; run identity "$sub" ;;
+        @ssh)      prompt "Subcommand (list/test/inspect/bootstrap):"; read -r sub; run ssh "$sub" ;;
+        @generate) prompt "Format (text/script/json/markdown) [text]:"; read -r fmt; run generate --format "${fmt:-text}" ;;
+        @convert)  prompt "Direction (ssh/https):"; read -r dir; run convert --to "$dir" ;;
+        --help)    run --help ;;
+        *)
+            # Verb passed verbatim (e.g. "status", "conventions --list-profiles")
+            # shellcheck disable=SC2086
+            run $1
+            ;;
+    esac
+}
+
+show_menu() {
+    local title="$1"
+    local -n options="$2"
+    while true; do
+        banner "$title"
+        local i=1
+        for entry in "${options[@]}"; do
+            printf '  %s%2d.%s  %s\n' "${CYAN}" "$i" "${RESET}" "${entry%%::*}"
+            ((i++))
+        done
+        if [[ "$title" != "gendia" ]]; then
+            printf '  %s%2s.%s  Back\n' "${CYAN}" "0" "${RESET}"
+        else
+            printf '  %s%2s.%s  Quit\n' "${CYAN}" "0" "${RESET}"
+        fi
+        printf '\n'
+        prompt "Choose [1-${#options[@]}, 0 to go back, q to quit]:"
+        read -r choice
+        case "$choice" in
+            q|Q) exit 0 ;;
+            0|"") return ;;
+            *[!0-9]*) echo "Not a number: $choice" ;;
+            *)
+                if (( choice >= 1 && choice <= ${#options[@]} )); then
+                    local entry="${options[$((choice - 1))]}"
+                    local action="${entry##*::}"
+                    dispatch "$action"
+                else
+                    echo "Out of range: $choice"
+                fi
+                ;;
+        esac
+    done
+}
+
+# --- main -------------------------------------------------------------------
+
+case "${1:-}" in
+    --list|-l)   list_mode; exit 0 ;;
+    --help|-h)
+        cat <<EOF
+gendia-menu — interactive menu over the gendia CLI
+
+Usage:
+  ${0##*/}                Launch the top-level menu.
+  ${0##*/} --list         Print every menu option without prompting (CI / docs).
+  ${0##*/} --help         Show this message.
+
+Environment:
+  GENDIA_BIN              Override the resolved gendia executable.
+  NO_COLOR                Disable ANSI styling.
+
+Resolved gendia: ${GENDIA}
+EOF
+        exit 0
+        ;;
+esac
+
+printf '%sgendia interactive menu%s — using %s%s%s\n' "${BOLD}" "${RESET}" "${DIM}" "${GENDIA}" "${RESET}"
+show_menu "gendia" TOP_LEVEL

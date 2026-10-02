@@ -1,0 +1,70 @@
+{
+  "$schema": "https://simtabi.com/gendia/schemas/standards-v1.json",
+  "version": 1,
+  "category": "web-and-api",
+  "rules": [
+    {
+      "id": "WEB001",
+      "name": "OpenAPI specification present",
+      "severity": "info",
+      "check": "file_exists",
+      "args": {
+        "basenames": ["openapi", "swagger"],
+        "extensions": [".yaml", ".yml", ".json"],
+        "locations": ["", "api/", "docs/api/", "spec/"]
+      },
+      "remediation": "Adopt OpenAPI 3.x; place the spec at openapi.yaml or api/openapi.yaml."
+    },
+    {
+      "id": "WEB002",
+      "name": "GraphQL schema present",
+      "severity": "info",
+      "check": "file_exists",
+      "args": {
+        "basenames": ["schema"],
+        "extensions": [".graphql", ".gql"],
+        "locations": ["", "schema/", "api/"]
+      },
+      "remediation": "Ship the GraphQL SDL as schema.graphql at root or under schema/."
+    },
+    {
+      "id": "WEB004",
+      "name": "Web app manifest present",
+      "severity": "info",
+      "check": "file_exists",
+      "args": {
+        "basenames": ["manifest"],
+        "extensions": [".webmanifest", ".json"],
+        "locations": ["public/", "static/", ""]
+      },
+      "remediation": "Add manifest.webmanifest under public/ for PWA / installable-app metadata."
+    },
+    {
+      "id": "WEB005",
+      "name": "RFC 9116 security.txt present",
+      "severity": "info",
+      "check": "file_exists",
+      "args": {
+        "basenames": ["security"],
+        "extensions": [".txt"],
+        "locations": [".well-known/", "public/.well-known/", "static/.well-known/"]
+      },
+      "applies_when": {
+        "any_file_exists": ["SECURITY.md", ".github/SECURITY.md", "docs/SECURITY.md"]
+      },
+      "remediation": "Pair SECURITY.md with /.well-known/security.txt (RFC 9116) for automated tooling."
+    },
+    {
+      "id": "WEB007",
+      "name": "robots.txt present",
+      "severity": "info",
+      "check": "file_exists",
+      "args": {
+        "basenames": ["robots"],
+        "extensions": [".txt"],
+        "locations": ["public/", "static/", ""]
+      },
+      "remediation": "Add robots.txt under public/ to declare crawler policy."
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+// Package app implements the ${name} command's behavior.
+package app
+
+import "fmt"
+
+// Run is the program entry point.
+func Run(args []string) error {
+	fmt.Println("hello from ${name}")
+	_ = args
+	return nil
+}

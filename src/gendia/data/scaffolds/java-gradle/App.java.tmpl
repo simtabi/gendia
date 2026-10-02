@@ -1,0 +1,14 @@
+package ${group_id};
+
+public final class App {
+    private App() {}
+
+    public static String greet(String target) {
+        return "hello from " + target;
+    }
+
+    public static void main(String[] args) {
+        String target = args.length > 0 ? args[0] : "world";
+        System.out.println(greet(target));
+    }
+}

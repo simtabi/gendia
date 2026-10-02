@@ -1,0 +1,58 @@
+{
+  "$schema": "https://simtabi.com/gendia/schemas/scaffold-v1.json",
+  "version": 1,
+  "id": "docs-mkdocs",
+  "name": "MkDocs Material documentation site",
+  "description": "Documentation-only repo using MkDocs + Material theme; ready for GitHub Pages deploy.",
+  "tags": ["docs", "mkdocs", "material"],
+  "languages": [],
+  "variables": {
+    "name": {
+      "description": "Site name (kebab-case)",
+      "required": true,
+      "validate": "^[a-z][a-z0-9-]*$"
+    },
+    "site_title": {
+      "description": "Human-readable site title (defaults to ${name})",
+      "default": "${name}"
+    },
+    "description": {
+      "description": "One-line site description",
+      "required": true
+    },
+    "license": {
+      "description": "SPDX license id (CC-BY-4.0 also common for docs but not yet bundled)",
+      "default": "MIT",
+      "choices": ["MIT", "Apache-2.0", "BSD-3-Clause", "ISC", "MPL-2.0"]
+    },
+    "author_name":  { "default": "Your Name" },
+    "author_email": { "default": "you@example.com" },
+    "year":         { "default": "${now.year}" }
+  },
+  "files": [
+    { "src": "_common/README.md.tmpl",          "dest": "README.md" },
+    { "src": "_common/CHANGELOG.md.tmpl",       "dest": "CHANGELOG.md" },
+    { "src": "_common/CONTRIBUTING.md.tmpl",    "dest": "CONTRIBUTING.md" },
+    { "src": "_common/CODE_OF_CONDUCT.md.tmpl", "dest": "CODE_OF_CONDUCT.md" },
+    { "src": "_common/SECURITY.md.tmpl",        "dest": "SECURITY.md" },
+    { "src": "_common/AGENTS.md.tmpl",          "dest": "AGENTS.md" },
+    { "src": "_common/.gitignore",              "dest": ".gitignore" },
+    { "src": "_common/.gitattributes",          "dest": ".gitattributes" },
+    { "src": "_common/.editorconfig",           "dest": ".editorconfig" },
+    { "src": "docs-mkdocs/mkdocs.yml.tmpl",     "dest": "mkdocs.yml" },
+    { "src": "docs-mkdocs/requirements.txt",    "dest": "requirements.txt" },
+    { "src": "docs-mkdocs/index.md.tmpl",       "dest": "docs/index.md" },
+    { "src": "docs-mkdocs/guide.md.tmpl",       "dest": "docs/guide.md" }
+  ],
+  "after_scaffold": [
+    {
+      "kind": "license_text",
+      "spdx": "${license}",
+      "dest": "LICENSE",
+      "holder": "${author_name}",
+      "year": "${year}"
+    },
+    { "kind": "git_init", "default_branch": "main" },
+    { "kind": "audit", "profile": "core" }
+  ]
+}

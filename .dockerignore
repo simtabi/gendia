@@ -1,0 +1,41 @@
+# Speeds up `docker build` and keeps the builder stage tidy. Everything listed
+# here is excluded from the build context.
+
+# VCS
+.git
+.gitignore
+.gitattributes
+
+# Local venvs / caches
+.venv
+venv
+__pycache__
+*.pyc
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+
+# Build artefacts
+build
+dist
+*.egg-info
+
+# IDE / editor
+.idea
+.vscode
+.DS_Store
+
+# Local-only configuration
+.env
+.env.*
+!.env.example
+
+# Tests, docs, examples — not needed at runtime
+tests
+docs
+examples
+
+# Compose / Docker artefacts (avoid recursive context)
+docker-compose.override.yml
