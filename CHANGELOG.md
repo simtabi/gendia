@@ -13,7 +13,7 @@ All notable changes to `gendia` follow [Keep a Changelog](https://keepachangelog
 - **Makefile extensions**: `make check` runs the full CI gate (lint + format-check + typecheck + tests), `make menu`, `make docker-up/down/ps/logs/exec/host-shell` for compose lifecycle, plus the existing `docker-build/run/push/shell`. `PYTHON` auto-detects `python3.12+` so it works on hosts where `python3` resolves to 3.10.
 - **`.dockerignore`**: trims the build context (excludes `.venv/`, caches, `tests/`, `docs/`, `examples/`, build artefacts) so `docker build` is fast and tidy.
 - **205 new unit tests** for the standards engine + scaffolds + autofix (running total: 389 across all changes in this Unreleased section). Coverage includes schema, every check kind, every fix kind (round-trip clears findings), every bundled rule pack, every bundled scaffold, every license text (via parametrize), security guards, JSON-mutating idempotency / malformed-JSON / missing-file / symlink-refusal, SPDX detection from LICENSE files, slugify edge cases.
-- **Docs**: `docs/repo-standards-and-audit.md` (v3.0 driver doc, ~3000 lines, ships the integration plan as Section 18) and `docs/status.md` (canonical phase tracker — 10 audit passes catalogued).
+- **Docs**: README sections for the standards engine, scaffolds, autofix and the interactive menu. The design driver doc and phase tracker used to plan this work are kept outside the repository.
 
 ### Added — SSH-config awareness layer
 
