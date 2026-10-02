@@ -1,0 +1,16 @@
+package ${group_id};
+
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+class AppTest {
+    @Test
+    void greetsTheTarget() {
+        assertEquals("hello from world", App.greet("world"));
+    }
+
+    @Test
+    void greetsACustomTarget() {
+        assertEquals("hello from gendia", App.greet("gendia"));
+    }
+}

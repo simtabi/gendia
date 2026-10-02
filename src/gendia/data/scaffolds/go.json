@@ -1,0 +1,60 @@
+{
+  "$schema": "https://simtabi.com/gendia/schemas/scaffold-v1.json",
+  "version": 1,
+  "id": "go",
+  "name": "Go (modules)",
+  "description": "Go module with cmd/ + internal/ layout, go.mod, golangci-lint, .editorconfig (tab-indented Go).",
+  "tags": ["go", "modules", "service"],
+  "languages": ["go"],
+  "variables": {
+    "name": {
+      "description": "Module short name (kebab-case)",
+      "required": true,
+      "validate": "^[a-z][a-z0-9-]*$"
+    },
+    "module_path": {
+      "description": "Go module path (e.g. github.com/<user>/<name>)",
+      "required": true,
+      "validate": "^[a-z0-9._-]+(?:/[a-z0-9._-]+)+$"
+    },
+    "description": {
+      "description": "One-line module description",
+      "required": true
+    },
+    "license": {
+      "description": "SPDX license id",
+      "default": "MIT",
+      "choices": ["MIT", "Apache-2.0", "BSD-3-Clause", "ISC", "Unlicense"]
+    },
+    "go_version":   { "default": "1.22" },
+    "author_name":  { "default": "Your Name" },
+    "author_email": { "default": "you@example.com" },
+    "year":         { "default": "${now.year}" }
+  },
+  "files": [
+    { "src": "_common/README.md.tmpl",          "dest": "README.md" },
+    { "src": "_common/CHANGELOG.md.tmpl",       "dest": "CHANGELOG.md" },
+    { "src": "_common/CONTRIBUTING.md.tmpl",    "dest": "CONTRIBUTING.md" },
+    { "src": "_common/CODE_OF_CONDUCT.md.tmpl", "dest": "CODE_OF_CONDUCT.md" },
+    { "src": "_common/SECURITY.md.tmpl",        "dest": "SECURITY.md" },
+    { "src": "_common/AGENTS.md.tmpl",          "dest": "AGENTS.md" },
+    { "src": "_common/.gitignore",              "dest": ".gitignore" },
+    { "src": "_common/.gitattributes",          "dest": ".gitattributes" },
+    { "src": "_common/.editorconfig",           "dest": ".editorconfig" },
+    { "src": "go/go.mod.tmpl",                  "dest": "go.mod" },
+    { "src": "go/.golangci.yml",                "dest": ".golangci.yml" },
+    { "src": "go/main.go.tmpl",                 "dest": "cmd/${name}/main.go" },
+    { "src": "go/internal_lib.go.tmpl",         "dest": "internal/app/app.go" }
+  ],
+  "after_scaffold": [
+    {
+      "kind": "license_text",
+      "spdx": "${license}",
+      "dest": "LICENSE",
+      "holder": "${author_name}",
+      "year": "${year}"
+    },
+    { "kind": "git_init", "default_branch": "main" },
+    { "kind": "audit", "profile": "core" }
+  ]
+}

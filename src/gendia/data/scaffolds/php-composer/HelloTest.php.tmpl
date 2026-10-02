@@ -1,0 +1,17 @@
+<?php
+
+declare(strict_types=1);
+
+namespace ${namespace}\Tests;
+
+use PHPUnit\Framework\TestCase;
+use ${namespace}\Hello;
+
+final class HelloTest extends TestCase
+{
+    public function test_version_is_a_string(): void
+    {
+        $this->assertIsString(Hello::VERSION);
+        $this->assertNotEmpty(Hello::VERSION);
+    }
+}

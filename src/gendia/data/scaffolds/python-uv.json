@@ -1,0 +1,71 @@
+{
+  "$schema": "https://simtabi.com/gendia/schemas/scaffold-v1.json",
+  "version": 1,
+  "id": "python-uv",
+  "name": "Python (uv-managed)",
+  "description": "Python package using uv + ruff + mypy + pytest, src/ layout.",
+  "tags": ["python", "uv", "library"],
+  "languages": ["python"],
+  "variables": {
+    "name": {
+      "description": "Package name (PEP 508 compliant; kebab-case)",
+      "required": true,
+      "validate": "^[a-z][a-z0-9-]*$"
+    },
+    "module": {
+      "description": "Importable module name (snake_case). Defaults to `name` with hyphens replaced.",
+      "default": "${name}"
+    },
+    "description": {
+      "description": "One-line project description",
+      "required": true
+    },
+    "license": {
+      "description": "SPDX license identifier",
+      "default": "MIT",
+      "choices": ["MIT", "Apache-2.0"]
+    },
+    "author_name": {
+      "description": "Copyright holder",
+      "default": "Your Name"
+    },
+    "author_email": {
+      "description": "Contact email",
+      "default": "you@example.com"
+    },
+    "python_version": {
+      "description": "Minimum supported Python version",
+      "default": "3.12"
+    },
+    "year": {
+      "description": "Copyright year",
+      "default": "${now.year}"
+    }
+  },
+  "files": [
+    { "src": "_common/README.md.tmpl",          "dest": "README.md" },
+    { "src": "_common/CHANGELOG.md.tmpl",       "dest": "CHANGELOG.md" },
+    { "src": "_common/CONTRIBUTING.md.tmpl",    "dest": "CONTRIBUTING.md" },
+    { "src": "_common/CODE_OF_CONDUCT.md.tmpl", "dest": "CODE_OF_CONDUCT.md" },
+    { "src": "_common/SECURITY.md.tmpl",        "dest": "SECURITY.md" },
+    { "src": "_common/AGENTS.md.tmpl",          "dest": "AGENTS.md" },
+    { "src": "_common/.gitignore",              "dest": ".gitignore" },
+    { "src": "_common/.gitattributes",          "dest": ".gitattributes" },
+    { "src": "_common/.editorconfig",           "dest": ".editorconfig" },
+    { "src": "python-uv/.python-version.tmpl",  "dest": ".python-version" },
+    { "src": "python-uv/pyproject.toml.tmpl",   "dest": "pyproject.toml" },
+    { "src": "python-uv/__init__.py.tmpl",      "dest": "src/${module}/__init__.py" },
+    { "src": "python-uv/test_basic.py.tmpl",    "dest": "tests/test_basic.py" }
+  ],
+  "after_scaffold": [
+    {
+      "kind": "license_text",
+      "spdx": "${license}",
+      "dest": "LICENSE",
+      "holder": "${author_name}",
+      "year": "${year}"
+    },
+    { "kind": "git_init", "default_branch": "main" },
+    { "kind": "audit", "profile": "core" }
+  ]
+}

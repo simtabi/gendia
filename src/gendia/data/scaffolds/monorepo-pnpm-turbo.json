@@ -1,0 +1,63 @@
+{
+  "$schema": "https://simtabi.com/gendia/schemas/scaffold-v1.json",
+  "version": 1,
+  "id": "monorepo-pnpm-turbo",
+  "name": "Polyglot monorepo (pnpm workspaces + Turborepo)",
+  "description": "Monorepo with pnpm workspaces + Turborepo + Biome + apps/ and packages/ layout.",
+  "tags": ["monorepo", "pnpm", "turborepo", "typescript"],
+  "languages": ["typescript", "javascript"],
+  "variables": {
+    "name": {
+      "description": "Monorepo name (kebab-case)",
+      "required": true,
+      "validate": "^[a-z][a-z0-9-]*$"
+    },
+    "description": {
+      "description": "One-line monorepo description",
+      "required": true
+    },
+    "license": {
+      "description": "SPDX license id",
+      "default": "MIT",
+      "choices": ["MIT", "Apache-2.0", "BSD-3-Clause", "ISC", "MPL-2.0"]
+    },
+    "node_version": { "default": "20" },
+    "pnpm_version": { "default": "9.7.0" },
+    "author_name":  { "default": "Your Name" },
+    "author_email": { "default": "you@example.com" },
+    "year":         { "default": "${now.year}" }
+  },
+  "files": [
+    { "src": "_common/README.md.tmpl",          "dest": "README.md" },
+    { "src": "_common/CHANGELOG.md.tmpl",       "dest": "CHANGELOG.md" },
+    { "src": "_common/CONTRIBUTING.md.tmpl",    "dest": "CONTRIBUTING.md" },
+    { "src": "_common/CODE_OF_CONDUCT.md.tmpl", "dest": "CODE_OF_CONDUCT.md" },
+    { "src": "_common/SECURITY.md.tmpl",        "dest": "SECURITY.md" },
+    { "src": "_common/AGENTS.md.tmpl",          "dest": "AGENTS.md" },
+    { "src": "_common/.gitignore",              "dest": ".gitignore" },
+    { "src": "_common/.gitattributes",          "dest": ".gitattributes" },
+    { "src": "_common/.editorconfig",           "dest": ".editorconfig" },
+    { "src": "monorepo-pnpm-turbo/.nvmrc.tmpl",         "dest": ".nvmrc" },
+    { "src": "monorepo-pnpm-turbo/.npmrc",              "dest": ".npmrc" },
+    { "src": "monorepo-pnpm-turbo/package.json.tmpl",   "dest": "package.json" },
+    { "src": "monorepo-pnpm-turbo/pnpm-workspace.yaml", "dest": "pnpm-workspace.yaml" },
+    { "src": "monorepo-pnpm-turbo/turbo.json",          "dest": "turbo.json" },
+    { "src": "monorepo-pnpm-turbo/tsconfig.base.json",  "dest": "tsconfig.base.json" },
+    { "src": "monorepo-pnpm-turbo/biome.json",          "dest": "biome.json" },
+    { "src": "monorepo-pnpm-turbo/app-package.json.tmpl", "dest": "apps/web/package.json" },
+    { "src": "monorepo-pnpm-turbo/app-index.ts.tmpl",   "dest": "apps/web/src/index.ts" },
+    { "src": "monorepo-pnpm-turbo/pkg-package.json.tmpl", "dest": "packages/core/package.json" },
+    { "src": "monorepo-pnpm-turbo/pkg-index.ts.tmpl",   "dest": "packages/core/src/index.ts" }
+  ],
+  "after_scaffold": [
+    {
+      "kind": "license_text",
+      "spdx": "${license}",
+      "dest": "LICENSE",
+      "holder": "${author_name}",
+      "year": "${year}"
+    },
+    { "kind": "git_init", "default_branch": "main" },
+    { "kind": "audit", "profile": "core" }
+  ]
+}

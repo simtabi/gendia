@@ -139,10 +139,44 @@ def build_parser() -> argparse.ArgumentParser:
         help="Limit to one account name (default: all configured accounts).",
     )
 
-    # init [--force]
+    # init [--force] [--scaffold ID --var KEY=VALUE...]
     p_init = sub.add_parser("init", help=_DESCRIPTIONS["init"])
-    p_init.add_argument("--force", action="store_true", help="Overwrite existing gendia.json")
+    p_init.add_argument("--force", action="store_true", help="Overwrite existing files")
     p_init.add_argument("--out", type=Path, default=Path("gendia.json"), help="Path to write")
+    p_init.add_argument(
+        "--scaffold",
+        default=None,
+        help="Bundled scaffold id (e.g. `bare`, `python-uv`). See --list-scaffolds.",
+    )
+    p_init.add_argument(
+        "--list-scaffolds",
+        action="store_true",
+        help="Print bundled scaffold ids and exit.",
+    )
+    p_init.add_argument(
+        "--var",
+        dest="scaffold_vars",
+        action="append",
+        default=[],
+        metavar="KEY=VALUE",
+        help="Scaffold variable (repeatable). Example: --var name=my-pkg",
+    )
+    p_init.add_argument(
+        "--target",
+        type=Path,
+        default=None,
+        help="Scaffold target directory (default: ./<name>).",
+    )
+    p_init.add_argument(
+        "--merge",
+        action="store_true",
+        help="Scaffold mode: skip files that already exist (retrofit-friendly).",
+    )
+    p_init.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print what would be written without touching disk.",
+    )
 
     # config <verb> ...
     config_cmd.add_subparser(sub)
@@ -440,6 +474,20 @@ def _run_project_optional(args: argparse.Namespace) -> int:
 
 def _run_init(args: argparse.Namespace) -> int:
     """Init doesn't need a config; build a minimal stub context."""
+    if getattr(args, "list_scaffolds", False):
+        from gendia import scaffolds  # noqa: PLC0415 — keep cli/cold-start path small
+
+        ids = scaffolds.list_bundled_scaffolds()
+        if not ids:
+            print("(no bundled scaffolds found)")
+            return 1
+        print("Bundled scaffolds (use --scaffold ID):")
+        for sid in ids:
+            spec = scaffolds.load_bundled_scaffold(sid)
+            description = spec.description if spec else ""
+            print(f"  {sid:<20} {description}")
+        return 0
+
     stub_account = Account(name="stub", platform="github", credential_ref="STUB", org="stub")
     stub_project = Project(
         name="stub",
@@ -466,10 +514,29 @@ def _run_init(args: argparse.Namespace) -> int:
         project=stub_project,
         provider=_Stub(),  # type: ignore[arg-type]
         registry=None,
-        dry_run=False,
+        dry_run=getattr(args, "dry_run", False),
         workers=1,
     )
-    op = InitOperation(ctx, target=args.out, force=args.force)
+
+    scaffold_request = None
+    if getattr(args, "scaffold", None):
+        from gendia import scaffolds  # noqa: PLC0415
+        from gendia.operations.init import ScaffoldRequest  # noqa: PLC0415
+
+        try:
+            user_vars = scaffolds.parse_var_assignments(args.scaffold_vars or [])
+        except ValueError as exc:
+            print(f"init: {exc}", file=sys.stderr)
+            return 2
+        scaffold_request = ScaffoldRequest(
+            scaffold_id=args.scaffold,
+            target=args.target,
+            variables=user_vars,
+            merge=bool(getattr(args, "merge", False)),
+            force=bool(getattr(args, "force", False)),
+        )
+
+    op = InitOperation(ctx, target=args.out, force=args.force, scaffold=scaffold_request)
     result = op.run()
     _print_result(result, args)
     return 0 if result.all_ok else 1

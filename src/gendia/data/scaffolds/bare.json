@@ -1,0 +1,54 @@
+{
+  "$schema": "https://simtabi.com/gendia/schemas/scaffold-v1.json",
+  "version": 1,
+  "id": "bare",
+  "name": "Minimal universal set",
+  "description": "Universal-set repo: README, LICENSE, CHANGELOG, .gitignore, .gitattributes, .editorconfig.",
+  "tags": ["minimal", "starter"],
+  "languages": [],
+  "variables": {
+    "name": {
+      "description": "Repository / project name (kebab-case)",
+      "required": true,
+      "validate": "^[a-z][a-z0-9-]*$"
+    },
+    "description": {
+      "description": "One-line project description",
+      "required": true
+    },
+    "license": {
+      "description": "SPDX license identifier",
+      "default": "MIT",
+      "choices": ["MIT", "Apache-2.0"]
+    },
+    "author_name": {
+      "description": "Copyright holder",
+      "default": "Your Name"
+    },
+    "author_email": {
+      "description": "Contact email",
+      "default": "you@example.com"
+    },
+    "year": {
+      "description": "Copyright year",
+      "default": "${now.year}"
+    }
+  },
+  "files": [
+    { "src": "_common/README.md.tmpl",     "dest": "README.md" },
+    { "src": "_common/CHANGELOG.md.tmpl",  "dest": "CHANGELOG.md" },
+    { "src": "_common/.gitignore",         "dest": ".gitignore" },
+    { "src": "_common/.gitattributes",     "dest": ".gitattributes" },
+    { "src": "_common/.editorconfig",      "dest": ".editorconfig" }
+  ],
+  "after_scaffold": [
+    {
+      "kind": "license_text",
+      "spdx": "${license}",
+      "dest": "LICENSE",
+      "holder": "${author_name}",
+      "year": "${year}"
+    },
+    { "kind": "git_init", "default_branch": "main" }
+  ]
+}

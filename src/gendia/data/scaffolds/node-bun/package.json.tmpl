@@ -1,0 +1,28 @@
+{
+  "name": "${name}",
+  "version": "0.1.0",
+  "description": "${description}",
+  "license": "${license}",
+  "author": "${author_name} <${author_email}>",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "README.md", "LICENSE"],
+  "scripts": {
+    "build": "bun build src/index.ts --outdir dist --target bun",
+    "test": "bun test",
+    "lint": "biome check src tests",
+    "format": "biome format --write src tests"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.0",
+    "@types/bun": "latest",
+    "typescript": "^5.5.0"
+  }
+}

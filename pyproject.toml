@@ -63,6 +63,7 @@ packages = ["src/gendia"]
 [tool.hatch.build.targets.wheel.force-include]
 "src/gendia/data/forges.json" = "gendia/data/forges.json"
 "src/gendia/data/standards" = "gendia/data/standards"
+"src/gendia/data/scaffolds" = "gendia/data/scaffolds"
 
 [tool.ruff]
 line-length = 100

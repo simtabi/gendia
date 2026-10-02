@@ -1,0 +1,23 @@
+{
+  "name": "${name}",
+  "version": "0.1.0",
+  "description": "${description}",
+  "license": "${license}",
+  "author": "${author_name} <${author_email}>",
+  "private": true,
+  "engines": {
+    "node": ">=${node_version}"
+  },
+  "packageManager": "pnpm@${pnpm_version}",
+  "scripts": {
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "biome check apps packages",
+    "format": "biome format --write apps packages"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.0",
+    "turbo": "^2.0.0",
+    "typescript": "^5.5.0"
+  }
+}

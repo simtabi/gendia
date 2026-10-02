@@ -1,0 +1,21 @@
+[package]
+name = "${name}"
+version = "0.1.0"
+edition = "${rust_edition}"
+description = "${description}"
+license = "${license}"
+authors = ["${author_name} <${author_email}>"]
+readme = "README.md"
+repository = ""
+keywords = []
+categories = []
+
+[dependencies]
+
+[dev-dependencies]
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }

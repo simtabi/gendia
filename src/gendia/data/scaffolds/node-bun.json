@@ -1,0 +1,57 @@
+{
+  "$schema": "https://simtabi.com/gendia/schemas/scaffold-v1.json",
+  "version": 1,
+  "id": "node-bun",
+  "name": "TypeScript + Bun",
+  "description": "TypeScript package using Bun (runtime + bundler + test runner) + Biome.",
+  "tags": ["typescript", "bun", "library"],
+  "languages": ["typescript", "javascript"],
+  "variables": {
+    "name": {
+      "description": "Package name (kebab-case, npm-safe)",
+      "required": true,
+      "validate": "^[a-z][a-z0-9-]*$"
+    },
+    "description": {
+      "description": "One-line package description",
+      "required": true
+    },
+    "license": {
+      "description": "SPDX license id",
+      "default": "MIT",
+      "choices": ["MIT", "Apache-2.0", "BSD-3-Clause", "ISC", "MIT-0", "Unlicense"]
+    },
+    "bun_version":  { "default": "1.1.0" },
+    "author_name":  { "default": "Your Name" },
+    "author_email": { "default": "you@example.com" },
+    "year":         { "default": "${now.year}" }
+  },
+  "files": [
+    { "src": "_common/README.md.tmpl",          "dest": "README.md" },
+    { "src": "_common/CHANGELOG.md.tmpl",       "dest": "CHANGELOG.md" },
+    { "src": "_common/CONTRIBUTING.md.tmpl",    "dest": "CONTRIBUTING.md" },
+    { "src": "_common/CODE_OF_CONDUCT.md.tmpl", "dest": "CODE_OF_CONDUCT.md" },
+    { "src": "_common/SECURITY.md.tmpl",        "dest": "SECURITY.md" },
+    { "src": "_common/AGENTS.md.tmpl",          "dest": "AGENTS.md" },
+    { "src": "_common/.gitignore",              "dest": ".gitignore" },
+    { "src": "_common/.gitattributes",          "dest": ".gitattributes" },
+    { "src": "_common/.editorconfig",           "dest": ".editorconfig" },
+    { "src": "node-bun/.bun-version.tmpl",      "dest": ".bun-version" },
+    { "src": "node-bun/package.json.tmpl",      "dest": "package.json" },
+    { "src": "node-bun/tsconfig.json",          "dest": "tsconfig.json" },
+    { "src": "node-bun/biome.json",             "dest": "biome.json" },
+    { "src": "node-bun/index.ts.tmpl",          "dest": "src/index.ts" },
+    { "src": "node-bun/index.test.ts.tmpl",     "dest": "tests/index.test.ts" }
+  ],
+  "after_scaffold": [
+    {
+      "kind": "license_text",
+      "spdx": "${license}",
+      "dest": "LICENSE",
+      "holder": "${author_name}",
+      "year": "${year}"
+    },
+    { "kind": "git_init", "default_branch": "main" },
+    { "kind": "audit", "profile": "core" }
+  ]
+}
