@@ -1,5 +1,7 @@
 # Security Policy
 
+Where this file is silent, the [Simtabi security policy](https://github.com/simtabi/.github/blob/HEAD/SECURITY.md) applies.
+
 ## Reporting a vulnerability
 
 Use GitHub private vulnerability reporting: open a private report at
