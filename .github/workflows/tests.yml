@@ -13,8 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     name: Lint + typecheck
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Install dev dependencies
@@ -37,8 +37,8 @@ jobs:
         python: ["3.12", "3.13"]
     name: Test (Python ${{ matrix.python }})
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
       - name: Install dev dependencies
@@ -53,8 +53,8 @@ jobs:
     needs: lint
     name: CLI smoke test
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Install package
