@@ -1,5 +1,7 @@
 # Contributing to gendia
 
+Where this file is silent, the [Simtabi contributing guide](https://github.com/simtabi/.github/blob/HEAD/CONTRIBUTING.md) applies.
+
 ## Development setup
 
 ```bash
