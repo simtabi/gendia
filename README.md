@@ -19,7 +19,7 @@ status — ok
 
 Maintaining a polyrepo Composer / npm / Python ecosystem means juggling: per-repo `composer.json` validation, CHANGELOG bumps, semver tagging, `git push --tags`, the Packagist update webhook, occasional Docker-image republishing, sometimes a parallel `npm publish` to a private registry — all wired together with bash scripts that drift out of sync the moment a repo gets renamed.
 
-Existing multi-repo tools (`mr`, `mu-repo`, `gita`) stop at clone / pull / status; none of them know about Packagist webhooks, npm tokens, or CHANGELOG-bump conventions. `gendia` fills that gap. It treats a release as a *workflow* (verify → bump → tag → push → notify) and keeps the dev surface and the CI surface identical — `gendia release myorg/core 1.0.1` does the same thing on your laptop and inside a CI runner.
+Existing multi-repo tools (`mr`, `mu-repo`, `gita`) stop at clone / pull / status; none of them know about Packagist webhooks, npm tokens, or CHANGELOG-bump conventions. `gendia` fills that gap. It treats a release as a *workflow* (verify → bump → tag → push → notify) and keeps the dev surface and the CI surface identical — `gendia release core 1.0.1` does the same thing on your laptop and inside a CI runner.
 
 ## Highlights
 
@@ -48,6 +48,31 @@ git clone git@github.com:simtabi/gendia.git
 cd gendia
 make install-dev
 ```
+
+## Quick start guide and usage
+
+### Getting started
+
+```sh
+gendia setup                        # first-run wizard; auto-detects the deployment shape
+gendia init                         # scaffold ./gendia.json at the project root, then list your repos
+mkdir -p ~/.config/gendia
+cp examples/.env.example ~/.config/gendia/.env
+chmod 600 ~/.config/gendia/.env     # then add the tokens your credential_ref keys name
+gendia doctor                       # preflight: env file, git/ssh binaries, agent, credentials
+```
+
+Both config files and the `.env` are described under [Configure](#configure).
+
+### Usage
+
+```bash
+gendia status                       # one-line summary per repo
+gendia sync --dry-run               # show what would be pushed and notified, do nothing
+gendia release core 1.0.1           # bump CHANGELOG, tag, push, notify
+```
+
+Every verb and modifier is listed under [Commands](#commands).
 
 ## Configure
 
@@ -164,7 +189,7 @@ gendia verify                                  # run each repo's verify[] comman
 
 # Workstation setup (manage gendia's own config + the host's git identity):
 gendia init [--out FILE] [--force]             # scaffold a fresh gendia.json
-gendia setup [local|vps|project|docker|k8s|ci] # interactive first-run wizard, autodetects shape
+gendia setup [--shape=local|vps|project|docker|k8s|ci]  # first-run wizard; autodetects the shape when omitted
 gendia config {list|get|set|unset|edit|path|doctor}   # manage the .env that holds tokens + paths
 gendia doctor                                  # full preflight: env file, git/ssh binaries, agent, credentials
 gendia identity {list|check|apply|setup|init}  # per-account git user.name / user.email / signing key
@@ -350,7 +375,7 @@ Or via Compose (recommended):
 ```bash
 docker compose run --rm gendia status
 docker compose run --rm gendia sync
-docker compose run --rm gendia release myorg/core 1.0.1
+docker compose run --rm gendia release core 1.0.1
 ```
 
 Or via the Make targets:
