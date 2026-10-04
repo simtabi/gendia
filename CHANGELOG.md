@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to `gendia` follow [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and [Semantic Versioning](https://semver.org/).
+All notable changes to `gendia` follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
@@ -63,3 +63,5 @@ All notable changes to `gendia` follow [Keep a Changelog](https://keepachangelog
 - Python 3.12+ (3.13 supported)
 - `git` and `openssh-client` on PATH for git operations
 - Optional: `npm` (only when publishing to npm), `twine` (only when publishing to PyPI), `keyring` (for OS-keychain credentials)
+
+[Unreleased]: https://github.com/simtabi/gendia/compare/v0.1.0...HEAD
