@@ -139,7 +139,7 @@ $EDITOR ~/.config/gendia/.env
 
 Inside the file:
 
-- **Direct value** for local dev: `GITHUB_TOKEN_MYORG=ghp_...`
+- **Direct value** for local dev: `GITHUB_TOKEN_MYORG=changeme`
 - **`<KEY>_FILE`** for Docker / Compose / Kubernetes secret mounts: `GITHUB_TOKEN_MYORG_FILE=/run/secrets/github_token_myorg`. The file's contents become the value of `<KEY>` at runtime — the secret never appears in env vars or process listings. Both forms can coexist; `*_FILE` wins when both are set.
 
 A small companion script ships in `bin/gendia-env` (also baked into the Docker image) that handles all of this for you. It sources the env file, resolves any `*_FILE` references, and runs whatever you exec it with — including `docker compose`, so `${VAR}` interpolation in `docker-compose.yml` Just Works:
