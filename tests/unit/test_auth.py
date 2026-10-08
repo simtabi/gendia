@@ -17,9 +17,9 @@ def test_env_store_reads_from_environment(monkeypatch: pytest.MonkeyPatch) -> No
 
 def test_env_store_reads_from_file(tmp_path: Path) -> None:
     f = tmp_path / ".env"
-    f.write_text('MY_TOKEN="from-file"\nOTHER=xx\n', encoding="utf-8")
+    f.write_text('MY_TOKEN="test-secret-not-real"\nOTHER=xx\n', encoding="utf-8")
     store = DotEnvCredentialStore(env_file=f)
-    assert store.get("MY_TOKEN") == "from-file"
+    assert store.get("MY_TOKEN") == "test-secret-not-real"
     assert store.get("OTHER") == "xx"
     assert store.get("MISSING") is None
 

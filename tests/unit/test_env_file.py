@@ -15,10 +15,10 @@ def populated(tmp_path: Path) -> Path:
     p.write_text(
         "# Header comment\n"
         "\n"
-        "GITHUB_TOKEN=ghp_xxx\n"
+        "GITHUB_TOKEN=changeme-github\n"
         "# A note about npm\n"
-        'NPM_TOKEN="npm_yyy"\n'
-        "export PYPI_API_TOKEN=pypi-zzz\n",
+        'NPM_TOKEN="changeme-npm"\n'
+        "export PYPI_API_TOKEN=changeme-pypi\n",
         encoding="utf-8",
     )
     p.chmod(0o600)
@@ -33,24 +33,24 @@ def test_load_parses_each_item_kind(populated: Path) -> None:
 
 def test_get_returns_unquoted_value(populated: Path) -> None:
     env = EnvFile.load(populated)
-    assert env.get("GITHUB_TOKEN") == "ghp_xxx"
-    assert env.get("NPM_TOKEN") == "npm_yyy"  # quotes stripped
-    assert env.get("PYPI_API_TOKEN") == "pypi-zzz"
+    assert env.get("GITHUB_TOKEN") == "changeme-github"
+    assert env.get("NPM_TOKEN") == "changeme-npm"  # quotes stripped
+    assert env.get("PYPI_API_TOKEN") == "changeme-pypi"
     assert env.get("MISSING") is None
 
 
 def test_set_updates_existing_in_place(populated: Path) -> None:
     env = EnvFile.load(populated)
-    env.set("GITHUB_TOKEN", "ghp_new_value")
+    env.set("GITHUB_TOKEN", "changeme-new")
     env.save()
 
     saved = populated.read_text(encoding="utf-8")
-    assert "GITHUB_TOKEN=ghp_new_value" in saved
-    assert "ghp_xxx" not in saved
+    assert "GITHUB_TOKEN=changeme-new" in saved
+    assert "changeme-github" not in saved
     # Other lines preserved.
     assert "# Header comment" in saved
     assert "# A note about npm" in saved
-    assert 'NPM_TOKEN="npm_yyy"' in saved
+    assert 'NPM_TOKEN="changeme-npm"' in saved
 
 
 def test_set_appends_new_key_with_blank_separator(populated: Path) -> None:
@@ -71,8 +71,8 @@ def test_unset_removes_without_shifting_other_keys(populated: Path) -> None:
 
     saved = populated.read_text(encoding="utf-8")
     assert "NPM_TOKEN" not in saved
-    assert "GITHUB_TOKEN=ghp_xxx" in saved
-    assert "PYPI_API_TOKEN=pypi-zzz" in saved
+    assert "GITHUB_TOKEN=changeme-github" in saved
+    assert "PYPI_API_TOKEN=changeme-pypi" in saved
     # The descriptive comment that lived above NPM_TOKEN should still be there.
     assert "# A note about npm" in saved
 
@@ -117,5 +117,5 @@ def test_round_trip_preserves_quoting_when_unchanged(populated: Path) -> None:
     env = EnvFile.load(populated)
     env.save()  # no edits; should round-trip
     saved = populated.read_text(encoding="utf-8")
-    assert 'NPM_TOKEN="npm_yyy"' in saved
-    assert "export PYPI_API_TOKEN=pypi-zzz" in saved
+    assert 'NPM_TOKEN="changeme-npm"' in saved
+    assert "export PYPI_API_TOKEN=changeme-pypi" in saved
