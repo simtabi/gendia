@@ -1,13 +1,13 @@
 # syntax=docker/dockerfile:1.7
 # Multi-stage build: small final image with only what gendia needs at runtime.
 
-FROM python:3.12-slim AS builder
+FROM python:3.14-slim AS builder
 WORKDIR /src
 RUN pip install --no-cache-dir hatchling
 COPY . .
 RUN python -m hatchling build --target wheel
 
-FROM python:3.12-slim
+FROM python:3.14-slim
 LABEL org.opencontainers.image.source="https://github.com/simtabi/gendia"
 LABEL org.opencontainers.image.description="CI/CD-friendly Packagist (and npm + PyPI) dev-workflow handler for polyrepo ecosystems"
 LABEL org.opencontainers.image.licenses="MIT"
